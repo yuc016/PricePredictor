@@ -3,11 +3,14 @@
         "X_file_path": "./data/X.pt",
         "y_file_path": "./data/y.pt",
         "test_set_percentage": 0.15,
-        "val_set_percentage": 0.2,
-        "batch_size": 64
+        "val_set_percentage": 0.2
     },
     "model": {
         "name": "PPNetV1",
         "hidden_size": 100
+    },
+    "training": {
+        "num_epochs": 10,
+        "batch_size": 64
     }
 }

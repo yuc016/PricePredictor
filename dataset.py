@@ -33,11 +33,11 @@ def shuffle_data(X, y):
 
 
 def get_dataloaders(config):
-    X_file_path = config["X_file_path"]
-    y_file_path = config["y_file_path"]
-    test_set_percentage = config["test_set_percentage"]
-    val_set_percentage = config["val_set_percentage"]
-    batch_size = config["batch_size"]
+    X_file_path = config["dataset"]["X_file_path"]
+    y_file_path = config["dataset"]["y_file_path"]
+    test_set_percentage = config["dataset"]["test_set_percentage"]
+    val_set_percentage = config["dataset"]["val_set_percentage"]
+    batch_size = config["training"]["batch_size"]
 
     X, y = get_data_tensor_from_path(X_file_path, y_file_path)
     X, y = shuffle_data(X, y)
