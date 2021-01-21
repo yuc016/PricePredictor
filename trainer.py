@@ -9,9 +9,16 @@ class PPNeuralTrainer:
 
         self.config = get_config("./", config_name + ".json")
 
-        self.net = PPNetV1(self.config["model"]["hidden_size"])
+        input_size = self.config["model"]["input_size"]
+        hidden_size = self.config["model"]["hidden_size"]
+        output_size = self.config["model"]["output_size"]
+        learning_rate = self.config["training"]["learning_rate"]
+        momentum = self.config["training"]["momentum"]
+
+        self.net = PPNetV1(input_size, hidden_size, output_size)
+
         self.criterion = torch.nn.MSELoss(reduction="sum")
-        self.optimizer = torch.optim.Adam(self.net.parameters())
+        self.optimizer = torch.optim.SGD(self.net.parameters(), lr=learning_rate, momentum=momentum, nesterov=True)
 
         if torch.cuda.is_available():
             self.net = self.net.cuda().float()
@@ -34,6 +41,8 @@ class PPNeuralTrainer:
             val_loss = self.validate()
             train_losses.append(train_loss)
             val_losses.append(val_loss)
+            print("Train loss at epoch ", i, ": ", train_loss)
+            print("Validation loss at epoch ", i, ": ", val_loss)
 
     # Train an iteration through the training data in train_dataloader
     #   and optimize the neural net 
@@ -47,16 +56,20 @@ class PPNeuralTrainer:
             X, y = X.cuda(), y.cuda()
             self.optimizer.zero_grad()
 
-            predictions = self.net(X)
+            # Make an extra dimension for input at each time step, which is 1 for PPV1
+            X = torch.unsqueeze(X, 2)
+            y = torch.unsqueeze(y, 2)
+
+            predictions = self.net(X, y)
             loss = self.criterion(predictions, y)
 
             loss.backward()
-            optimizer.step()
+            self.optimizer.step()
 
             training_loss += loss.item()
 
-        # Average loss over number of data and prediction serie length
-        return training_loss / len(self.train_dataloader.dataset) / y.shape[1]
+        # Average loss over number of data
+        return training_loss / len(self.train_dataloader.dataset)
 
     # Run an iteration through the validation data in val_dataloader
     # Return - averaged validation loss
@@ -69,13 +82,21 @@ class PPNeuralTrainer:
             for i, (X, y) in enumerate(self.val_dataloader):
                 X, y = X.cuda(), y.cuda()
 
-                predictions = self.net(X)
+                # Make an extra dimension for input at each time step, which is 1 for PPV1
+                X = torch.unsqueeze(X, 2)
+                y = torch.unsqueeze(y, 2)
+
+                predictions = self.net(X, y)
                 loss = self.criterion(predictions, y)
+
+                if i == 0:
+                    print(predictions[:2])
+                    print(y[:2])
 
                 val_loss += loss.item()
 
-        # Average loss over number of data and prediction serie length
-        return val_loss / len(self.val_dataloader.dataset) / y.shape[1]
+        # Average loss over number of data
+        return val_loss / len(self.val_dataloader.dataset)
 
     def test(self):
         print("TEST!")
