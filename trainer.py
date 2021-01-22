@@ -4,8 +4,10 @@ import utils
 import model
 import dataset
 
-import matplotlib.pyplot as plt
 from math import sqrt
+
+
+ROOT_EXP_DIR = "./experiment"
 
 class PPNeuralTrainer:
     def __init__(self, config_name):
@@ -58,9 +60,11 @@ class PPNeuralTrainer:
                 min_val_loss = val_loss
 
         self.net = best_model
-        utils.save_model(self.net, self.config["name"] + ".pt")
         test_loss = self.test()
         print("Final test loss:", test_loss)
+
+        utils.log_stats(train_losses, val_losses, ROOT_EXP_DIR, self.config["name"])
+        utils.save_model(self.net, ROOT_EXP_DIR, self.config["name"])
 
     # Train an iteration through the training data in train_dataloader
     #   and optimize the neural net 
