@@ -7,12 +7,12 @@ class PPNetV1(nn.Module):
         super(PPNetV1, self).__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.linear = nn.Sequential(
-            nn.Dropout(),
+            nn.Dropout(0.2),
             nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
-            # nn.Linear(hidden_size, 16),
-            # nn.ReLU(),
-            # nn.Linear(16, output_size)
+            # nn.Linear(hidden_size, output_size)
+            nn.Linear(hidden_size, 16),
+            nn.ReLU(),
+            nn.Linear(16, output_size)
         )
         
     # input_series - (Batch size x sequence length x input_size)

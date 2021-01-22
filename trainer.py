@@ -1,4 +1,5 @@
 import torch
+from math import sqrt
 
 from utils import *
 from model import *
@@ -82,14 +83,10 @@ class PPNeuralTrainer:
             loss /= len(X) # Average over batch size
             loss.backward()
 
-            # if torch.sum(list(self.net.lstm.parameters())[1].grad) == 0:
-            #     print(list(self.net.lstm.parameters())[1].grad)
-            #     exit()
-            # print(list(self.net.lstm.parameters())[1].grad)
-            
             self.optimizer.step()
 
-        return training_loss / len(self.train_dataloader.dataset)
+        # Average by data points and data serie length, square root to get RMSD from MSE
+        return sqrt(training_loss / len(self.train_dataloader.dataset) / y.shape[1])
 
     # Run an iteration through the validation data in val_dataloader
     # Return - averaged validation loss
@@ -106,18 +103,18 @@ class PPNeuralTrainer:
                 X = torch.unsqueeze(X, 2)
                 y = torch.unsqueeze(y, 2)
 
-                predictions = self.net(X, y)
+                predictions = self.net(X, y).squeeze(2)
+                y = y.squeeze(2)
                 loss = self.criterion(predictions, y)
 
                 val_loss += loss.item()
 
                 if i == 0:
-                    print(predictions[:4])
-                    print(y[:4])
-                    # print(list(self.net.parameters()))
+                    print(predictions[:6])
+                    print(y[:6])
 
-        # Average loss over number of data
-        return val_loss / len(self.val_dataloader.dataset)
+        # Average by data points and data serie length, square root to get RMSD from MSE
+        return sqrt(val_loss / len(self.val_dataloader.dataset) / y.shape[1])
 
     def test(self):
         print("TEST!")

@@ -39,8 +39,8 @@ def min_max_normalize(X, y):
     max_value = torch.max(X)
     max_value = max(torch.max(y), max_value)
 
-    X = torch.log((X - min_value) / (max_value - min_value) * 100 + 1e-4)
-    y = torch.log((y - min_value) / (max_value - min_value) * 100 + 1e-4)
+    X = torch.log2((X - min_value) / (max_value - min_value) + 1e-4)
+    y = torch.log2((y - min_value) / (max_value - min_value) + 1e-4)
 
     return X, y
 
