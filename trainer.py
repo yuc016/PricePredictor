@@ -1,18 +1,20 @@
 import torch
-from math import sqrt
+import copy
+import utils
+import model
+import dataset
 
-from utils import *
-from model import *
-from dataset import *
+import matplotlib.pyplot as plt
+from math import sqrt
 
 class PPNeuralTrainer:
     def __init__(self, config_name):
 
-        self.config = get_config("./", config_name + ".json")
+        self.config = utils.get_config("./", config_name + ".json")
 
         self.init_model(self.config)
 
-        self.train_dataloader, self.val_dataloader, self.test_dataloader = get_dataloaders(self.config)
+        self.train_dataloader, self.val_dataloader, self.test_dataloader = dataset.get_dataloaders(self.config)
 
     def init_model(self, config):
         input_size = self.config["model"]["input_size"]
@@ -22,7 +24,7 @@ class PPNeuralTrainer:
         learning_rate = self.config["training"]["learning_rate"]
         momentum = self.config["training"]["momentum"]
 
-        self.net = PPNetV1(input_size, hidden_size, num_lstm_layers, output_size)
+        self.net = model.PPNetV1(input_size, hidden_size, num_lstm_layers, output_size)
         self.criterion = torch.nn.MSELoss(reduction="sum")
         self.optimizer = torch.optim.SGD(self.net.parameters(), lr=learning_rate, momentum=momentum)
 
@@ -36,27 +38,29 @@ class PPNeuralTrainer:
     def go(self):
         print("GO!")
 
-        num_folds = self.config["training"]["num_folds"]
-        num_epochs = self.config["training"]["num_epochs"]
-
+        best_model = None
+        min_val_loss = float("inf")
         train_losses = []
         val_losses = []
+        num_epochs = self.config["training"]["num_epochs"]
 
-        for fold in range(num_folds):
-            print("#######  Fold", fold, "#######")
+        for epoch in range(num_epochs):
+            train_loss = self.train()
+            val_loss = self.validate()
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
 
-            for epoch in range(num_epochs):
-                train_loss = self.train()
-                val_loss = self.validate()
-                train_losses.append(train_loss)
-                val_losses.append(val_loss)
-                print("Train loss at epoch ", epoch, ": ", train_loss)
-                print("Validation loss at epoch ", epoch, ": ", val_loss)
+            print("Validation loss at epoch ", epoch, ": ", val_loss)
 
-            # TODO: Save best model
+            # Save best model
+            if val_loss < min_val_loss:
+                best_model = copy.deepcopy(self.net)
+                min_val_loss = val_loss
 
-            self.init_model(self.config)
-            self.train_dataloader, self.val_dataloader, self.test_dataloader = get_dataloaders(self.config)
+        self.net = best_model
+        utils.save_model(self.net, self.config["name"] + ".pt")
+        test_loss = self.test()
+        print("Final test loss:", test_loss)
 
     # Train an iteration through the training data in train_dataloader
     #   and optimize the neural net 
@@ -85,7 +89,7 @@ class PPNeuralTrainer:
 
             self.optimizer.step()
 
-        # Average by data points and data serie length, square root to get RMSD from MSE
+        # Average by data points and data serie length, take square root to get RMSD from MSE
         return sqrt(training_loss / len(self.train_dataloader.dataset) / y.shape[1])
 
     # Run an iteration through the validation data in val_dataloader
@@ -109,14 +113,28 @@ class PPNeuralTrainer:
 
                 val_loss += loss.item()
 
-                if i == 0:
-                    print(predictions[:6])
-                    print(y[:6])
-
-        # Average by data points and data serie length, square root to get RMSD from MSE
+        # Average by data points and data serie length, take square root to get RMSD from MSE
         return sqrt(val_loss / len(self.val_dataloader.dataset) / y.shape[1])
 
     def test(self):
         print("TEST!")
         self.net.eval()
 
+        test_loss = 0
+
+        with torch.no_grad():
+            for i, (X, y) in enumerate(self.test_dataloader):
+                X, y = X.cuda(), y.cuda()
+
+                # Make an extra dimension for input at each time step, which is 1 for PPV1
+                X = torch.unsqueeze(X, 2)
+                y = torch.unsqueeze(y, 2)
+
+                predictions = self.net(X, y).squeeze(2)
+                y = y.squeeze(2)
+                loss = self.criterion(predictions, y)
+
+                test_loss += loss.item()
+
+        # Average by data points and data serie length, take square root to get RMSD from MSE
+        return sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1])

@@ -1,6 +1,6 @@
+import torch
 import os
 import json
-
 
 def get_config(root_dir, file_name):
     path = os.path.join(root_dir, file_name)
@@ -11,3 +11,6 @@ def get_config(root_dir, file_name):
         return data
     else:
         raise Exception("file doesn't exist: ", path)
+
+def save_model(model, file_name):
+    torch.save(model.state_dict(), file_name)

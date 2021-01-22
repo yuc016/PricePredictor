@@ -1,4 +1,5 @@
 {
+    "name": "config1",
     "dataset": {
         "X_file_path": "./data/X.pt",
         "y_file_path": "./data/y.pt",
@@ -9,12 +10,12 @@
         "name": "PPNetV1",
         "input_size": 1,
         "hidden_size": 200,
-        "num_lstm_layers": 1,
+        "num_lstm_layers": 2,
         "output_size": 1
     },
     "training": {
-        "num_epochs": 300,
-        "num_folds": 2,
+        "num_epochs": 2,
+        "num_folds": 1,
         "batch_size": 128,
         "learning_rate": 0.05,
         "momentum": 0.9

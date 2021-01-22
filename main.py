@@ -10,4 +10,3 @@ if __name__ == "__main__":
     print("Using Configuration: ", config_name + ".json")
     trainer = PPNeuralTrainer(config_name)
     trainer.go()
-    trainer.test()
