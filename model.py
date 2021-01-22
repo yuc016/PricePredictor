@@ -3,11 +3,17 @@ import torch.nn as nn
 
 
 class PPNetV1(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size):
         super(PPNetV1, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
-        self.relu = nn.ReLU()
-        self.linear = nn.Linear(hidden_size, output_size)
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.linear = nn.Sequential(
+            nn.Dropout(),
+            nn.ReLU(),
+            nn.Linear(hidden_size, output_size)
+            # nn.Linear(hidden_size, 16),
+            # nn.ReLU(),
+            # nn.Linear(16, output_size)
+        )
         
     # input_series - (Batch size x sequence length x input_size)
     # target_series - (Batch size x sequence length x input_size)
@@ -20,17 +26,15 @@ class PPNetV1(nn.Module):
         output_serie_len = target_series.shape[1]
         features = features[:,-output_serie_len-1:-1,:]
 
-        # Non-linearity
-        features = self.relu(features)
-
-        if debug_print:
-            print(features)
-
         # Linear layer to reduce feature vectors
         predicted_series = self.linear(features)
 
         if debug_print:
-            print(predicted_series)
+            print("input_series shape:", input_series.shape)
+            print("target_series shape:", target_series.shape)
+            print("input_time_series shape:", input_time_series.shape)
+            print("features shape:", features.shape)
+            print("predicted_series shape:", predicted_series.shape)
 
         # Return predictions at target serie time steps
         return predicted_series

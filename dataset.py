@@ -32,6 +32,18 @@ def shuffle_data(X, y):
     return X, y
 
 
+def min_max_normalize(X, y):
+    # Min max normalize the change
+    min_value = torch.min(X)
+    min_value = min(torch.min(y), min_value)
+    max_value = torch.max(X)
+    max_value = max(torch.max(y), max_value)
+
+    X = torch.log((X - min_value) / (max_value - min_value) * 100 + 1e-4)
+    y = torch.log((y - min_value) / (max_value - min_value) * 100 + 1e-4)
+
+    return X, y
+
 def get_dataloaders(config):
     X_file_path = config["dataset"]["X_file_path"]
     y_file_path = config["dataset"]["y_file_path"]
@@ -41,6 +53,8 @@ def get_dataloaders(config):
 
     X, y = get_data_tensor_from_path(X_file_path, y_file_path)
     X, y = shuffle_data(X, y)
+    # X, y = min_max_normalize(X, y)
+
     (X_test, X_train), (y_test, y_train) = split_data(X, y, test_set_percentage)
     (X_val, X_train), (y_val, y_train) = split_data(X_train, y_train, val_set_percentage)
 

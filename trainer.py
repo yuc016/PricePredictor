@@ -9,16 +9,21 @@ class PPNeuralTrainer:
 
         self.config = get_config("./", config_name + ".json")
 
+        self.init_model(self.config)
+
+        self.train_dataloader, self.val_dataloader, self.test_dataloader = get_dataloaders(self.config)
+
+    def init_model(self, config):
         input_size = self.config["model"]["input_size"]
         hidden_size = self.config["model"]["hidden_size"]
+        num_lstm_layers = self.config["model"]["num_lstm_layers"]
         output_size = self.config["model"]["output_size"]
         learning_rate = self.config["training"]["learning_rate"]
         momentum = self.config["training"]["momentum"]
 
-        self.net = PPNetV1(input_size, hidden_size, output_size)
-
+        self.net = PPNetV1(input_size, hidden_size, num_lstm_layers, output_size)
         self.criterion = torch.nn.MSELoss(reduction="sum")
-        self.optimizer = torch.optim.SGD(self.net.parameters(), lr=learning_rate, momentum=momentum, nesterov=True)
+        self.optimizer = torch.optim.SGD(self.net.parameters(), lr=learning_rate, momentum=momentum)
 
         if torch.cuda.is_available():
             self.net = self.net.cuda().float()
@@ -26,23 +31,31 @@ class PPNeuralTrainer:
         else:
             raise("CUDA Not Available, CPU training not implemented")
 
-        self.train_dataloader, self.val_dataloader, self.test_dataloader = get_dataloaders(self.config)
 
     def go(self):
         print("GO!")
 
+        num_folds = self.config["training"]["num_folds"]
         num_epochs = self.config["training"]["num_epochs"]
 
         train_losses = []
         val_losses = []
 
-        for i in range(num_epochs):
-            train_loss = self.train()
-            val_loss = self.validate()
-            train_losses.append(train_loss)
-            val_losses.append(val_loss)
-            print("Train loss at epoch ", i, ": ", train_loss)
-            print("Validation loss at epoch ", i, ": ", val_loss)
+        for fold in range(num_folds):
+            print("#######  Fold", fold, "#######")
+
+            for epoch in range(num_epochs):
+                train_loss = self.train()
+                val_loss = self.validate()
+                train_losses.append(train_loss)
+                val_losses.append(val_loss)
+                print("Train loss at epoch ", epoch, ": ", train_loss)
+                print("Validation loss at epoch ", epoch, ": ", val_loss)
+
+            # TODO: Save best model
+
+            self.init_model(self.config)
+            self.train_dataloader, self.val_dataloader, self.test_dataloader = get_dataloaders(self.config)
 
     # Train an iteration through the training data in train_dataloader
     #   and optimize the neural net 
@@ -57,18 +70,25 @@ class PPNeuralTrainer:
             self.optimizer.zero_grad()
 
             # Make an extra dimension for input at each time step, which is 1 for PPV1
-            X = torch.unsqueeze(X, 2)
-            y = torch.unsqueeze(y, 2)
+            X = X.unsqueeze(2)
+            y = y.unsqueeze(2)
 
-            predictions = self.net(X, y)
+            predictions = self.net(X, y).squeeze(2)
+            y = y.squeeze(2)
             loss = self.criterion(predictions, y)
-
-            loss.backward()
-            self.optimizer.step()
 
             training_loss += loss.item()
 
-        # Average loss over number of data
+            loss /= len(X) # Average over batch size
+            loss.backward()
+
+            # if torch.sum(list(self.net.lstm.parameters())[1].grad) == 0:
+            #     print(list(self.net.lstm.parameters())[1].grad)
+            #     exit()
+            # print(list(self.net.lstm.parameters())[1].grad)
+            
+            self.optimizer.step()
+
         return training_loss / len(self.train_dataloader.dataset)
 
     # Run an iteration through the validation data in val_dataloader
@@ -89,11 +109,12 @@ class PPNeuralTrainer:
                 predictions = self.net(X, y)
                 loss = self.criterion(predictions, y)
 
-                if i == 0:
-                    print(predictions[:2])
-                    print(y[:2])
-
                 val_loss += loss.item()
+
+                if i == 0:
+                    print(predictions[:4])
+                    print(y[:4])
+                    # print(list(self.net.parameters()))
 
         # Average loss over number of data
         return val_loss / len(self.val_dataloader.dataset)
