@@ -24,7 +24,7 @@ if __name__ == "__main__":
         experiment_name = sys.argv[2]
         
     experiment_dir_path = os.path.join(EXP_ROOT_DIR, experiment_name)
-    if not os.path.isdir(experiment_dir_path):
+    if not os.path.exists(experiment_dir_path):
         os.mkdir(experiment_dir_path)
 
     print("Using Configuration: ", config_name + ".json")
