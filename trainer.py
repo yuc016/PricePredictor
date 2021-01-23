@@ -28,7 +28,7 @@ class PPNeuralTrainer:
 
         self.net = model.PPNetV1(input_size, hidden_size, num_lstm_layers, output_size)
         self.criterion = torch.nn.MSELoss(reduction="sum")
-        self.optimizer = torch.optim.SGD(self.net.parameters(), lr=learning_rate, momentum=momentum)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate)
 
         # Load saved model state if there is one, use same seed to get dataset
         rand_seed, epoch = fileutils.load_experiment_state(self.net, self.optimizer, self.experiment_dir_path)
@@ -73,10 +73,8 @@ class PPNeuralTrainer:
                                         self.net, self.optimizer, self.experiment_dir_path)
         fileutils.log_stats(train_losses, val_losses, self.experiment_dir_path)
 
-        if best_model is not None:
-            self.net = best_model
-        test_loss = self.test()
-        print("Final test loss:", test_loss)
+        # if best_model is not None:
+        #     self.net = best_model
 
 
     # Train an iteration through the training data in train_dataloader
@@ -151,6 +149,10 @@ class PPNeuralTrainer:
                 predictions = self.net(X, y).squeeze(2)
                 y = y.squeeze(2)
                 loss = self.criterion(predictions, y)
+
+                if i == 0:
+                    print(predictions * 100)
+                    print(y * 100)
 
                 test_loss += loss.item()
 

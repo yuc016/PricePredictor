@@ -14,10 +14,10 @@
         "output_size": 1
     },
     "training": {
-        "num_epochs": 300,
+        "num_epochs": 150,
         "num_folds": 1,
         "batch_size": 32,
-        "learning_rate": 0.05,
+        "learning_rate": 0.001,
         "momentum": 0.9
     }
 }
