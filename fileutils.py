@@ -1,4 +1,5 @@
 import torch
+from random import randint
 import json
 import os
 import matplotlib.pyplot as plt
@@ -8,13 +9,15 @@ def get_config(file_path):
         data = json.load(json_file)
     return data
 
-def load_model_state(net, optimizer, dir_path):
-    path = os.path.join(dir_path, "model_state.pt")
+def load_experiment_state(net, optimizer, dir_path):
+    path = os.path.join(dir_path, "experiment_state.pt")
     if os.path.isfile(path):
         print("Model state loaded!")
-        model_state = torch.load(path)
-        net_state = model_state['net']
-        optimizer_state = model_state['optimizer']
+        experiment_state = torch.load(path)
+        rand_seed = experiment_state['seed']
+        epoch = experiment_state['epoch']
+        net_state = experiment_state['net']
+        optimizer_state = experiment_state['optimizer']
 
         net.load_state_dict(net_state)
         optimizer.load_state_dict(optimizer_state)
@@ -25,16 +28,22 @@ def load_model_state(net, optimizer, dir_path):
             for k, v in state.items():
                 if isinstance(v, torch.Tensor):
                     state[k] = v.cuda()
+        
+        return rand_seed, epoch
     else:
         print("No saved model state found!")
+        return randint(0, 1234567890), 0
 
-def save_model_state(net, optimizer, dir_path):
+def save_experiment_state(seed, epoch, net, optimizer, dir_path):
     net_state = net.state_dict()
     optimizer_state = optimizer.state_dict()
-    model_state = {'net': net_state, 'optimizer': optimizer_state}
+    experiment_state = {'seed': seed,
+                        'epoch': epoch,
+                        'net': net_state, 
+                        'optimizer': optimizer_state}
 
-    path = os.path.join(dir_path, "model_state.pt")
-    torch.save(model_state, path)
+    path = os.path.join(dir_path, "experiment_state.pt")
+    torch.save(experiment_state, path)
     print("Model state saved!")
 
 def log_stats(train_losses, val_losses, dir_path):
@@ -43,7 +52,7 @@ def log_stats(train_losses, val_losses, dir_path):
     plt.plot(x_axis, train_losses, label="Training Loss")
     plt.plot(x_axis, val_losses, label="Validation Loss")
     plt.xlabel("Epochs")
-    plt.legend(loc='best')
+    plt.legend()
     plt.title("Loss Curve (Last Training Session)")
     path = os.path.join(dir_path, "loss_curve.png")
     plt.savefig(path)

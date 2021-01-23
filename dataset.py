@@ -44,7 +44,7 @@ def min_max_normalize(X, y):
 
     return X, y
 
-def get_dataloaders(config):
+def get_dataloaders(config, rand_seed):
     X_file_path = config["dataset"]["X_file_path"]
     y_file_path = config["dataset"]["y_file_path"]
     test_set_percentage = config["dataset"]["test_set_percentage"]
@@ -52,6 +52,7 @@ def get_dataloaders(config):
     batch_size = config["training"]["batch_size"]
 
     X, y = get_data_tensor_from_path(X_file_path, y_file_path)
+    random.seed(rand_seed)
     X, y = shuffle_data(X, y)
     # X, y = min_max_normalize(X, y)
 
