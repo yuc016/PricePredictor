@@ -1,18 +1,18 @@
 import torch
 import copy
-import utils
+import fileutils
 import model
 import dataset
 
 from math import sqrt
 
 
-ROOT_EXP_DIR = "./experiment"
-
 class PPNeuralTrainer:
-    def __init__(self, config_name):
+    # Assume a valid config_file_path and model_state_file_path
+    def __init__(self, config_file_path, experiment_dir_path):
 
-        self.config = utils.get_config("./", config_name + ".json")
+        self.config = fileutils.get_config(config_file_path)
+        self.experiment_dir_path = experiment_dir_path
 
         self.init_model(self.config)
 
@@ -30,6 +30,10 @@ class PPNeuralTrainer:
         self.criterion = torch.nn.MSELoss(reduction="sum")
         self.optimizer = torch.optim.SGD(self.net.parameters(), lr=learning_rate, momentum=momentum)
 
+        # Load saved model state if there is one
+        fileutils.load_model_state(self.net, self.optimizer, self.experiment_dir_path)
+
+        # Use GPU for training
         if torch.cuda.is_available():
             self.net = self.net.cuda().float()
             self.criterion = self.criterion.cuda()
@@ -59,12 +63,14 @@ class PPNeuralTrainer:
                 best_model = copy.deepcopy(self.net)
                 min_val_loss = val_loss
 
+            # Save model state and log statistics
+            fileutils.save_model_state(self.net, self.optimizer, self.experiment_dir_path)
+            fileutils.log_stats(train_losses, val_losses, self.experiment_dir_path)
+
         self.net = best_model
         test_loss = self.test()
         print("Final test loss:", test_loss)
 
-        utils.log_stats(train_losses, val_losses, ROOT_EXP_DIR, self.config["name"])
-        utils.save_model(self.net, ROOT_EXP_DIR, self.config["name"])
 
     # Train an iteration through the training data in train_dataloader
     #   and optimize the neural net 
@@ -96,6 +102,7 @@ class PPNeuralTrainer:
         # Average by data points and data serie length, take square root to get RMSD from MSE
         return sqrt(training_loss / len(self.train_dataloader.dataset) / y.shape[1])
 
+
     # Run an iteration through the validation data in val_dataloader
     # Return - averaged validation loss
     def validate(self):
@@ -119,6 +126,7 @@ class PPNeuralTrainer:
 
         # Average by data points and data serie length, take square root to get RMSD from MSE
         return sqrt(val_loss / len(self.val_dataloader.dataset) / y.shape[1])
+
 
     def test(self):
         print("TEST!")

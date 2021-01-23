@@ -9,10 +9,7 @@ class PPNetV1(nn.Module):
         self.linear = nn.Sequential(
             nn.Dropout(0.2),
             nn.ReLU(),
-            # nn.Linear(hidden_size, output_size)
-            nn.Linear(hidden_size, 16),
-            nn.ReLU(),
-            nn.Linear(16, output_size)
+            nn.Linear(hidden_size, output_size)
         )
         
     # input_series - (Batch size x sequence length x input_size)

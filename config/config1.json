@@ -1,0 +1,23 @@
+{
+    "name": "config1",
+    "dataset": {
+        "X_file_path": "./data/X.pt",
+        "y_file_path": "./data/y.pt",
+        "test_set_percentage": 0.15,
+        "val_set_percentage": 0.2
+    },
+    "model": {
+        "name": "PPNetV1",
+        "input_size": 1,
+        "hidden_size": 600,
+        "num_lstm_layers": 2,
+        "output_size": 1
+    },
+    "training": {
+        "num_epochs": 500,
+        "num_folds": 1,
+        "batch_size": 256,
+        "learning_rate": 0.05,
+        "momentum": 0.9
+    }
+}
