@@ -40,7 +40,6 @@ def save_model_state(net, optimizer, dir_path):
 def log_stats(train_losses, val_losses, dir_path):
     e = len(train_losses)
     x_axis = [i for i in range(1, e+1)]
-    plt.figure()
     plt.plot(x_axis, train_losses, label="Training Loss")
     plt.plot(x_axis, val_losses, label="Validation Loss")
     plt.xlabel("Epochs")
