@@ -3,11 +3,11 @@ import torch.nn as nn
 
 
 class PPNetV1(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
         super(PPNetV1, self).__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.linear = nn.Sequential(
-            nn.Dropout(0.2),
+            nn.Dropout(dropout_rate),
             nn.ReLU(),
             nn.Linear(hidden_size, output_size)
         )

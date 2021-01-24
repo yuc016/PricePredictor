@@ -24,9 +24,10 @@ class PPNeuralTrainer:
         num_lstm_layers = self.config["model"]["num_lstm_layers"]
         output_size = self.config["model"]["output_size"]
         learning_rate = self.config["training"]["learning_rate"]
+        dropout_rate = self.config["training"]["dropout_rate"]
         momentum = self.config["training"]["momentum"]
 
-        self.net = model.PPNetV1(input_size, hidden_size, num_lstm_layers, output_size)
+        self.net = model.PPNetV1(input_size, hidden_size, num_lstm_layers, output_size, dropout_rate)
         self.criterion = torch.nn.MSELoss(reduction="sum")
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate)
 
@@ -59,6 +60,7 @@ class PPNeuralTrainer:
             train_losses.append(train_loss)
             val_losses.append(val_loss)
 
+            print("Training loss at epoch ", self.epoch, ": ", train_loss)
             print("Validation loss at epoch ", self.epoch, ": ", val_loss)
 
             # Save best model
