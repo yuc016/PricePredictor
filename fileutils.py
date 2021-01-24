@@ -47,12 +47,21 @@ def save_experiment_state(seed, epoch, net, optimizer, dir_path):
     print("Model state saved!")
 
 def log_stats(train_losses, val_losses, dir_path):
-    e = len(train_losses)
-    x_axis = [i for i in range(1, e+1)]
-    plt.plot(x_axis, train_losses, label="Training Loss")
-    plt.plot(x_axis, val_losses, label="Validation Loss")
-    plt.xlabel("Epochs")
+    make_plot([train_losses, val_losses], ["Training loss", "Validation loss"], 
+              "Epoch", "Loss Curve (Last Training Session)", "loss_curve.png", 
+              dir_path)
+
+
+def make_plot(data, labels, x_axis_name, plot_name, file_name, dir_path):
+    x = len(data[0])
+    x_axis = [i for i in range(1, x+1)]
+
+    for i in range(len(data)):
+        plt.plot(x_axis, data[i], label=labels[i])
+    plt.xlabel(x_axis_name)
+
     plt.legend()
-    plt.title("Loss Curve (Last Training Session)")
-    path = os.path.join(dir_path, "loss_curve.png")
+    plt.title(plot_name)
+    path = os.path.join(dir_path, file_name)
     plt.savefig(path)
+    plt.close()

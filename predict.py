@@ -1,9 +1,4 @@
 from trainer import PPNeuralTrainer
-import os
-import sys
-
-EXP_ROOT_DIR = "./experiment"
-CONFIG_ROOT_DIR = "./config"
 
 if __name__ == "__main__":
     config_file_path = None
@@ -29,7 +24,7 @@ if __name__ == "__main__":
 
     print("Using Configuration: ", config_name + ".json")
     print("Experiment name: ", experiment_name)
-
     trainer = PPNeuralTrainer(config_file_path, experiment_dir_path)
     trainer.go()
-    trainer.test()
+    test_loss = trainer.test()
+    print("Final test loss:", test_loss)

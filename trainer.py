@@ -1,4 +1,5 @@
 import torch
+import random
 import copy
 import fileutils
 import model
@@ -138,12 +139,16 @@ class PPNeuralTrainer:
     def test(self):
         print("TEST!")
         self.net.eval()
-        self.net.cpu()
 
         test_loss = 0
 
+        actual_serie = []
+        predicted_serie = []
+
         with torch.no_grad():
             for i, (X, y) in enumerate(self.test_dataloader):
+                X, y = X.cuda(), y.cuda()
+
                 # Make an extra dimension for input at each time step, which is 1 for PPV1
                 X = torch.unsqueeze(X, 2)
                 y = torch.unsqueeze(y, 2)
@@ -152,11 +157,22 @@ class PPNeuralTrainer:
                 y = y.squeeze(2)
                 loss = self.criterion(predictions, y)
 
-                if i == 0:
-                    print(predictions * 100)
-                    print(y * 100)
+                for j in range(len(y)):
+                    actual_serie.append(y[j, 0])
+                    predicted_serie.append(predictions[j, 0])
 
                 test_loss += loss.item()
 
+        # Print an example of prediction vs actual data
+        print("Predicted: ", predictions * 100)
+        print("Actual: ", y * 100)
+
+        zero = [0 for i in range(len(actual_serie))]
+        fileutils.make_plot([actual_serie, predicted_serie, zero], 
+                            ["Actual", "Predicted", "Zero line"], "Hour", 
+                            "Bitcoin Price Change", "test_data_regression",
+                            self.experiment_dir_path)
+
         # Average by data points and data serie length, take square root to get RMSD from MSE
-        return sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1])
+        test_loss = sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1])
+        print("Final test loss:", test_loss)

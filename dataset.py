@@ -8,12 +8,21 @@ def get_data_tensor_from_path(X_file_path, y_file_path):
 
 
 # Split the data tensor X and corresponding tensor y into two sets
+#   set 1 starts at random index of X and is continuous
 # Return - (X1, X2), (y1, y2)
 def split_data(X, y, set_1_percentage):
     set_1_size = int(X.shape[0] * set_1_percentage)
     set_2_size = X.shape[0] - set_1_size
 
-    return torch.split(X, [set_1_size, set_2_size]), torch.split(y, [set_1_size, set_2_size])
+    set_1_start = random.randint(0, len(X) - set_1_size)
+    set_1_end = set_1_start + set_1_size
+
+    set_1_X = X[set_1_start:set_1_end]
+    set_1_y = y[set_1_start:set_1_end]
+    set_2_X = torch.cat((X[:set_1_start], X[set_1_end:]), dim=0)
+    set_2_y = torch.cat((y[:set_1_start], y[set_1_end:]), dim=0)
+
+    return (set_1_X, set_2_X), (set_1_y, set_2_y)
 
 
 # Shuffle data tensor X and corresponding tensor y in parallel
@@ -44,6 +53,7 @@ def min_max_normalize(X, y):
 
     return X, y
 
+
 def get_dataloaders(config, rand_seed):
     X_file_path = config["dataset"]["X_file_path"]
     y_file_path = config["dataset"]["y_file_path"]
@@ -51,12 +61,11 @@ def get_dataloaders(config, rand_seed):
     val_set_percentage = config["dataset"]["val_set_percentage"]
     batch_size = config["training"]["batch_size"]
 
-    X, y = get_data_tensor_from_path(X_file_path, y_file_path)
     random.seed(rand_seed)
-    X, y = shuffle_data(X, y)
-    # X, y = min_max_normalize(X, y)
 
+    X, y = get_data_tensor_from_path(X_file_path, y_file_path)
     (X_test, X_train), (y_test, y_train) = split_data(X, y, test_set_percentage)
+    X_train, y_train = shuffle_data(X_train, y_train)
     (X_val, X_train), (y_val, y_train) = split_data(X_train, y_train, val_set_percentage)
 
     train_dataset = price_series_dataset(X_train, y_train)

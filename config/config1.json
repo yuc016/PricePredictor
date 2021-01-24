@@ -9,12 +9,12 @@
     "model": {
         "name": "PPNetV1",
         "input_size": 1,
-        "hidden_size": 400,
-        "num_lstm_layers": 3,
+        "hidden_size": 200,
+        "num_lstm_layers": 2,
         "output_size": 1
     },
     "training": {
-        "num_epochs": 200,
+        "num_epochs": 258,
         "num_folds": 1,
         "batch_size": 32,
         "learning_rate": 0.002,
