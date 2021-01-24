@@ -31,5 +31,6 @@ if __name__ == "__main__":
     print("Experiment name: ", experiment_name)
 
     trainer = PPNeuralTrainer(config_file_path, experiment_dir_path)
+    trainer.test()
     trainer.go()
     trainer.test()

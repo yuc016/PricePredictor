@@ -164,15 +164,16 @@ class PPNeuralTrainer:
                 test_loss += loss.item()
 
         # Print an example of prediction vs actual data
+        print("Example test data")
         print("Predicted: ", predictions * 100)
         print("Actual: ", y * 100)
 
         zero = [0 for i in range(len(actual_serie))]
-        fileutils.make_plot([actual_serie, predicted_serie, zero], 
+        fileutils.make_plot([actual_serie[345:567], predicted_serie[345:567], zero[345:567]], 
                             ["Actual", "Predicted", "Zero line"], "Hour", 
                             "Bitcoin Price Change", "test_data_regression",
                             self.experiment_dir_path)
 
         # Average by data points and data serie length, take square root to get RMSD from MSE
         test_loss = sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1])
-        print("Final test loss:", test_loss)
+        print("Test loss:", test_loss)

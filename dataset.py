@@ -8,14 +8,17 @@ def get_data_tensor_from_path(X_file_path, y_file_path):
 
 
 # Split the data tensor X and corresponding tensor y into two sets
-#   set 1 starts at random index of X and is continuous
+#   set 1 is a random continuous trunk of data from X
 # Return - (X1, X2), (y1, y2)
-def split_data(X, y, set_1_percentage):
+def split_data(X, y, set_1_percentage, print_start_i=False):
     set_1_size = int(X.shape[0] * set_1_percentage)
     set_2_size = X.shape[0] - set_1_size
 
     set_1_start = random.randint(0, len(X) - set_1_size)
     set_1_end = set_1_start + set_1_size
+
+    if print_start_i:
+        print("Test data time interval: [", set_1_start, ",", set_1_end, "]")
 
     set_1_X = X[set_1_start:set_1_end]
     set_1_y = y[set_1_start:set_1_end]
@@ -64,9 +67,9 @@ def get_dataloaders(config, rand_seed):
     random.seed(rand_seed)
 
     X, y = get_data_tensor_from_path(X_file_path, y_file_path)
-    (X_test, X_train), (y_test, y_train) = split_data(X, y, test_set_percentage)
-    X_train, y_train = shuffle_data(X_train, y_train)
-    (X_val, X_train), (y_val, y_train) = split_data(X_train, y_train, val_set_percentage)
+    X, y = shuffle_data(X, y)
+    (X_test, X), (y_test, y) = split_data(X, y, test_set_percentage, True)
+    (X_val, X_train), (y_val, y_train) = split_data(X, y, val_set_percentage)
 
     train_dataset = price_series_dataset(X_train, y_train)
     val_dataset = price_series_dataset(X_val, y_val)
