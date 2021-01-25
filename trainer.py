@@ -49,11 +49,14 @@ class PPNeuralTrainer:
     def go(self):
         print("GO!")
 
-        best_model = None
+        best_model = self.net
         min_val_loss = float("inf")
         train_losses = []
         val_losses = []
+        overfit_limit = self.config["training"]["overfit_limit"]
         num_epochs = self.config["training"]["num_epochs"]
+
+        overfit = 0
 
         while self.epoch < num_epochs:
             train_loss = self.train()
@@ -68,16 +71,22 @@ class PPNeuralTrainer:
             if val_loss < min_val_loss:
                 best_model = copy.deepcopy(self.net)
                 min_val_loss = val_loss
+                overfit = 0
+            else:
+                overfit += 1
+                if overfit == overfit_limit:
+                    print("Early stopping!")
+                    break
 
             self.epoch += 1
 
+        self.net = best_model
+        
         # Save model state and log statistics
         fileutils.save_experiment_state(self.rand_seed, self.epoch, 
                                         self.net, self.optimizer, self.experiment_dir_path)
         fileutils.log_stats(train_losses, val_losses, self.experiment_dir_path)
 
-        # if best_model is not None:
-        #     self.net = best_model
 
 
     # Train an iteration through the training data in train_dataloader
@@ -158,8 +167,9 @@ class PPNeuralTrainer:
                 loss = self.criterion(predictions, y)
 
                 for j in range(len(y)):
-                    actual_serie.append(y[j, 0])
-                    predicted_serie.append(predictions[j, 0])
+                    for k in range(len(y[0])):
+                        actual_serie.append(y[j, k])
+                        predicted_serie.append(predictions[j, k])
 
                 test_loss += loss.item()
 
@@ -168,10 +178,12 @@ class PPNeuralTrainer:
         print("Predicted: ", predictions * 100)
         print("Actual: ", y * 100)
 
+        print(len(actual_serie))
+
         zero = [0 for i in range(len(actual_serie))]
-        fileutils.make_plot([actual_serie[345:567], predicted_serie[345:567], zero[345:567]], 
-                            ["Actual", "Predicted", "Zero line"], "Hour", 
-                            "Bitcoin Price Change", "test_data_regression",
+        fileutils.make_plot([actual_serie, predicted_serie, zero], 
+                            ["Actual", "Predicted", "Zero line"], "Time step", 
+                            "Rate of change", "test_data_regression",
                             self.experiment_dir_path)
 
         # Average by data points and data serie length, take square root to get RMSD from MSE
