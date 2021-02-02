@@ -9,17 +9,17 @@
     "model": {
         "name": "PPNetV1",
         "input_size": 1,
-        "hidden_size": 64,
-        "num_lstm_layers": 1,
-        "output_size": 1
+        "hidden_size": 128,
+        "num_lstm_layers": 2,
+        "len_decode_serie": 5
     },
     "training": {
-        "num_epochs": 20,
+        "num_epochs": 100,
         "num_folds": 1,
         "batch_size": 32,
-        "learning_rate": 0.002,
-        "overfit_limit": 20,
-        "dropout_rate": 0.5,
-        "momentum": 0.9
+        "learning_rate": 0.001,
+        "overfit_limit": 30,
+        "dropout_rate": 0.3,
+        "momentum": 0.2
     }
 }

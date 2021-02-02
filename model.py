@@ -35,3 +35,22 @@ class PPNetV1(nn.Module):
 
         # Return predictions at target serie time steps
         return predicted_series
+
+class PPNetV2(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
+        super(PPNetV2, self).__init__()
+        self.encoder = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.decoder = nn.Sequential(
+            nn.Dropout(dropout_rate),
+            nn.ReLU(),
+            nn.Linear(hidden_size, output_size)
+        )
+        
+    # input_series - (Batch size x sequence length x input_size)
+    def forward(self, input_series, debug_print=False):
+        encoder_out, _ = self.encoder(input_series)
+        # Output from last timestep
+        encoder_out = encoder_out[:, -1:, :].squeeze(1)
+        decoder_out = self.decoder(encoder_out)
+        
+        return decoder_out

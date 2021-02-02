@@ -67,10 +67,11 @@ def get_dataloaders(config, rand_seed):
     random.seed(rand_seed)
 
     X, y = get_data_tensor_from_path(X_file_path, y_file_path)
+    
     (X_test, X), (y_test, y) = split_data(X, y, test_set_percentage, True)
     X, y = shuffle_data(X, y)
     (X_val, X_train), (y_val, y_train) = split_data(X, y, val_set_percentage)
-
+    
     train_dataset = price_series_dataset(X_train, y_train)
     val_dataset = price_series_dataset(X_val, y_val)
     test_dataset = price_series_dataset(X_test, y_test)

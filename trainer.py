@@ -7,6 +7,8 @@ import dataset
 
 from math import sqrt
 
+TEST_SAMPLE_LEN = 150
+
 
 class PPNeuralTrainer:
     # Assume a valid config_file_path and model_state_file_path
@@ -23,12 +25,12 @@ class PPNeuralTrainer:
         input_size = self.config["model"]["input_size"]
         hidden_size = self.config["model"]["hidden_size"]
         num_lstm_layers = self.config["model"]["num_lstm_layers"]
-        output_size = self.config["model"]["output_size"]
+        len_decode_serie = self.config["model"]["len_decode_serie"]
         learning_rate = self.config["training"]["learning_rate"]
         dropout_rate = self.config["training"]["dropout_rate"]
         momentum = self.config["training"]["momentum"]
 
-        self.net = model.PPNetV1(input_size, hidden_size, num_lstm_layers, output_size, dropout_rate)
+        self.net = model.PPNetV2(input_size, hidden_size, num_lstm_layers, len_decode_serie, dropout_rate)
         self.criterion = torch.nn.MSELoss(reduction="sum")
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate)
 
@@ -42,7 +44,7 @@ class PPNeuralTrainer:
             self.net = self.net.cuda().float()
             self.criterion = self.criterion.cuda()
         else:
-            raise("CUDA Not Available, CPU training not implemented")
+            raise("CUDA Not Available, CPU training not supported")
 
         return rand_seed, epoch
 
@@ -103,10 +105,8 @@ class PPNeuralTrainer:
 
             # Make an extra dimension for input at each time step, which is 1 for PPV1
             X = X.unsqueeze(2)
-            y = y.unsqueeze(2)
 
-            predictions = self.net(X, y).squeeze(2)
-            y = y.squeeze(2)
+            predictions = self.net(X, y)
             loss = self.criterion(predictions, y)
 
             training_loss += loss.item()
@@ -115,7 +115,7 @@ class PPNeuralTrainer:
             loss.backward()
 
             self.optimizer.step()
-
+            
         # Average by data points and data serie length, take square root to get RMSD from MSE
         return sqrt(training_loss / len(self.train_dataloader.dataset) / y.shape[1])
 
@@ -133,10 +133,8 @@ class PPNeuralTrainer:
 
                 # Make an extra dimension for input at each time step, which is 1 for PPV1
                 X = torch.unsqueeze(X, 2)
-                y = torch.unsqueeze(y, 2)
 
-                predictions = self.net(X, y).squeeze(2)
-                y = y.squeeze(2)
+                predictions = self.net(X, y)
                 loss = self.criterion(predictions, y)
 
                 val_loss += loss.item()
@@ -160,10 +158,8 @@ class PPNeuralTrainer:
 
                 # Make an extra dimension for input at each time step, which is 1 for PPV1
                 X = torch.unsqueeze(X, 2)
-                y = torch.unsqueeze(y, 2)
 
-                predictions = self.net(X, y).squeeze(2)
-                y = y.squeeze(2)
+                predictions = self.net(X)
                 loss = self.criterion(predictions, y)
 
                 for j in range(len(y)):
@@ -175,14 +171,13 @@ class PPNeuralTrainer:
 
         # Print an example of prediction vs actual data
         print("Example test data")
-        print("Predicted: ", predictions * 100)
-        print("Actual: ", y * 100)
+        print("Predicted: ", predictions)
+        print("Actual: ", y)
 
-        print(len(actual_serie))
-
+        start = random.randint(0, len(actual_serie) - TEST_SAMPLE_LEN)
         zero = [0 for i in range(len(actual_serie))]
-        fileutils.make_plot([actual_serie, predicted_serie, zero], 
-                            ["Actual", "Predicted", "Zero line"], "Time step", 
+        fileutils.make_plot([actual_serie[start:start+TEST_SAMPLE_LEN], predicted_serie[start:start+TEST_SAMPLE_LEN]], 
+                            ["Actual", "Predicted"], "Time step", 
                             "Rate of change", "test_data_regression",
                             self.experiment_dir_path)
 
