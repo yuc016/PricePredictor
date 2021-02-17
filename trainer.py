@@ -7,7 +7,7 @@ import dataset
 
 from math import sqrt
 
-TEST_SAMPLE_LEN = 150
+TEST_SAMPLE_LEN = 50
 
 
 class PPNeuralTrainer:
@@ -16,9 +16,7 @@ class PPNeuralTrainer:
 
         self.config = fileutils.get_config(config_file_path)
         self.experiment_dir_path = experiment_dir_path
-
         self.rand_seed, self.epoch = self.init_model(self.config)
-
         self.train_dataloader, self.val_dataloader, self.test_dataloader = dataset.get_dataloaders(self.config, self.rand_seed)
 
     def init_model(self, config):
@@ -28,11 +26,12 @@ class PPNeuralTrainer:
         len_decode_serie = self.config["model"]["len_decode_serie"]
         learning_rate = self.config["training"]["learning_rate"]
         dropout_rate = self.config["training"]["dropout_rate"]
+        weight_decay = self.config["training"]["weight_decay"]
         momentum = self.config["training"]["momentum"]
 
         self.net = model.PPNetV2(input_size, hidden_size, num_lstm_layers, len_decode_serie, dropout_rate)
         self.criterion = torch.nn.MSELoss(reduction="sum")
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate, weight_decay=weight_decay, eps=0)
 
         # Load saved model state if there is one, use same seed to get dataset
         rand_seed, epoch = fileutils.load_experiment_state(self.net, self.optimizer, self.experiment_dir_path)
@@ -61,13 +60,13 @@ class PPNeuralTrainer:
         overfit = 0
 
         while self.epoch < num_epochs:
-            train_loss = self.train()
             val_loss = self.validate()
-            train_losses.append(train_loss)
             val_losses.append(val_loss)
-
-            print("Training loss at epoch ", self.epoch, ": ", train_loss)
             print("Validation loss at epoch ", self.epoch, ": ", val_loss)
+            
+            train_loss = self.train()
+            train_losses.append(train_loss)
+            print("Training loss at epoch ", self.epoch, ": ", train_loss)
 
             # Save best model
             if val_loss < min_val_loss:
@@ -82,7 +81,7 @@ class PPNeuralTrainer:
 
             self.epoch += 1
 
-        self.net = best_model
+#         self.net = best_model
         
         # Save model state and log statistics
         fileutils.save_experiment_state(self.rand_seed, self.epoch, 
@@ -96,15 +95,13 @@ class PPNeuralTrainer:
     # Return - averaged training loss
     def train(self):
         self.net.train()
+        self.net.cuda()
 
         training_loss = 0
         
         for i, (X, y) in enumerate(self.train_dataloader):
             X, y = X.cuda(), y.cuda()
             self.optimizer.zero_grad()
-
-            # Make an extra dimension for input at each time step, which is 1 for PPV1
-            X = X.unsqueeze(2)
 
             predictions = self.net(X, y)
             loss = self.criterion(predictions, y)
@@ -124,15 +121,13 @@ class PPNeuralTrainer:
     # Return - averaged validation loss
     def validate(self):
         self.net.eval()
+        self.net.cuda()
         
         val_loss = 0
         
         with torch.no_grad():
             for i, (X, y) in enumerate(self.val_dataloader):
                 X, y = X.cuda(), y.cuda()
-
-                # Make an extra dimension for input at each time step, which is 1 for PPV1
-                X = torch.unsqueeze(X, 2)
 
                 predictions = self.net(X, y)
                 loss = self.criterion(predictions, y)
@@ -146,6 +141,8 @@ class PPNeuralTrainer:
     def test(self):
         print("TEST!")
         self.net.eval()
+#         torch.cuda.empty_cache()
+        self.net.cpu()
 
         test_loss = 0
 
@@ -154,10 +151,7 @@ class PPNeuralTrainer:
 
         with torch.no_grad():
             for i, (X, y) in enumerate(self.test_dataloader):
-                X, y = X.cuda(), y.cuda()
-
-                # Make an extra dimension for input at each time step, which is 1 for PPV1
-                X = torch.unsqueeze(X, 2)
+#                 X, y = X.cuda(), y.cuda()
 
                 predictions = self.net(X)
                 loss = self.criterion(predictions, y)
@@ -171,8 +165,8 @@ class PPNeuralTrainer:
 
         # Print an example of prediction vs actual data
         print("Example test data")
-        print("Predicted: ", predictions)
-        print("Actual: ", y)
+        print("Predicted: \n", predictions)
+        print("Actual: \n", y)
 
         start = random.randint(0, len(actual_serie) - TEST_SAMPLE_LEN)
         zero = [0 for i in range(len(actual_serie))]
