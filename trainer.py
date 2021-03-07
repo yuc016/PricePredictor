@@ -10,68 +10,91 @@ from math import sqrt
 TEST_SAMPLE_LEN = 50
 
 
-class PPNeuralTrainer:
-    # Assume a valid config_file_path and model_state_file_path
+class NeuralNetTrainer:
     def __init__(self, config_file_path, experiment_dir_path):
 
         self.config = fileutils.get_config(config_file_path)
+        print("Configuration:")
+        print(self.config)
+        
         self.experiment_dir_path = experiment_dir_path
-        self.rand_seed, self.epoch = self.init_model(self.config)
+        
+        self.rand_seed = None     # Random seed for dividing training, validation and test dataset
+        self.epoch = None         # Training iteration
+        
+        self.net = None           # Neural network
+        self.best_net = None      # Best network
+        
+        self.criterion = None     # Objective function evaluator
+        self.optimizer = None     # optimizer
+        
+        self.train_losses = None  # Training losses
+        self.val_losses = None    # Validation losses
+        self.best_score = None    # Best validation loss
+        
+        self.init_experiment(self.config)
+        
         self.train_dataloader, self.val_dataloader, self.test_dataloader = dataset.get_dataloaders(self.config, self.rand_seed)
+    
+    # Initialize net, optimizer, criterion and stats
+    def init_experiment(self, config):
+        input_size = config["model"]["input_size"]
+        hidden_size = config["model"]["hidden_size"]
+        num_lstm_layers = config["model"]["num_lstm_layers"]
+        len_decode_serie = config["model"]["len_decode_serie"]
+        dropout_rate = config["model"]["dropout_rate"]
 
-    def init_model(self, config):
-        input_size = self.config["model"]["input_size"]
-        hidden_size = self.config["model"]["hidden_size"]
-        num_lstm_layers = self.config["model"]["num_lstm_layers"]
-        len_decode_serie = self.config["model"]["len_decode_serie"]
-        learning_rate = self.config["training"]["learning_rate"]
-        dropout_rate = self.config["training"]["dropout_rate"]
-        weight_decay = self.config["training"]["weight_decay"]
-        momentum = self.config["training"]["momentum"]
+        learning_rate = config["training"]["learning_rate"]
+        weight_decay = config["training"]["weight_decay"]
 
-        self.net = model.PPNetV2(input_size, hidden_size, num_lstm_layers, len_decode_serie, dropout_rate)
-        self.criterion = torch.nn.MSELoss(reduction="sum")
+        self.net = model.LSTMNetV2(input_size, hidden_size, num_lstm_layers, len_decode_serie, dropout_rate)
+        self.best_net = copy.deepcopy(self.net)
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate, weight_decay=weight_decay, eps=0)
+        self.criterion = torch.nn.MSELoss(reduction="sum")
+        
+        self.train_losses = []
+        self.val_losses = []
+        self.best_score = float("inf")
 
-        # Load saved model state if there is one, use same seed to get dataset
-        rand_seed, epoch = fileutils.load_experiment_state(self.net, self.optimizer, self.experiment_dir_path)
-        print("Random seed: ", rand_seed)
-        print("Current epoch:", epoch)
+        # Load saved state if there is one
+        fileutils.load_experiment_state(self)
+        
+        print("Random seed: ", self.rand_seed)
+        print("Current epoch:", self.epoch)
 
         # Use GPU for training
         if torch.cuda.is_available():
             self.net = self.net.cuda().float()
+            self.best_net = self.best_net.cuda().float()
             self.criterion = self.criterion.cuda()
         else:
             raise("CUDA Not Available, CPU training not supported")
 
-        return rand_seed, epoch
-
+    # Training + validation loops
     def go(self):
         print("GO!")
+        print("Best validation loss:", self.best_score)
 
-        best_model = self.net
-        min_val_loss = float("inf")
-        train_losses = []
-        val_losses = []
         overfit_limit = self.config["training"]["overfit_limit"]
         num_epochs = self.config["training"]["num_epochs"]
 
         overfit = 0
 
         while self.epoch < num_epochs:
-            val_loss = self.validate()
-            val_losses.append(val_loss)
-            print("Validation loss at epoch ", self.epoch, ": ", val_loss)
+            print("Epoch ", self.epoch)
             
             train_loss = self.train()
-            train_losses.append(train_loss)
-            print("Training loss at epoch ", self.epoch, ": ", train_loss)
+            self.train_losses.append(train_loss)
+            val_loss = self.validate()
+            self.val_losses.append(val_loss)
+            
+            print("Training loss: ", train_loss, end='')
+            print(" | Validation loss: ", val_loss)
 
-            # Save best model
-            if val_loss < min_val_loss:
-                best_model = copy.deepcopy(self.net)
-                min_val_loss = val_loss
+            # Save best model and check overfitting
+            if val_loss < self.best_score:
+                self.best_net = copy.deepcopy(self.net)
+                self.best_score = val_loss
                 overfit = 0
             else:
                 overfit += 1
@@ -81,13 +104,11 @@ class PPNeuralTrainer:
 
             self.epoch += 1
 
-#         self.net = best_model
-        
+        print("Best validation loss:", self.best_score)
+            
         # Save model state and log statistics
-        fileutils.save_experiment_state(self.rand_seed, self.epoch, 
-                                        self.net, self.optimizer, self.experiment_dir_path)
-        fileutils.log_stats(train_losses, val_losses, self.experiment_dir_path)
-
+        fileutils.save_experiment_state(self)
+        fileutils.log_stats(self.train_losses, self.val_losses, self.experiment_dir_path)
 
 
     # Train an iteration through the training data in train_dataloader
@@ -139,10 +160,9 @@ class PPNeuralTrainer:
 
 
     def test(self):
-        print("TEST!")
-        self.net.eval()
+        self.best_net.eval()
 #         torch.cuda.empty_cache()
-        self.net.cpu()
+#         self.best_net.cpu()
 
         test_loss = 0
 
@@ -151,9 +171,9 @@ class PPNeuralTrainer:
 
         with torch.no_grad():
             for i, (X, y) in enumerate(self.test_dataloader):
-#                 X, y = X.cuda(), y.cuda()
+                X, y = X.cuda(), y.cuda()
 
-                predictions = self.net(X)
+                predictions = self.best_net(X)
                 loss = self.criterion(predictions, y)
 
                 for j in range(len(y)):
@@ -162,11 +182,17 @@ class PPNeuralTrainer:
                         predicted_serie.append(predictions[j, k])
 
                 test_loss += loss.item()
+                
+                if i == 0:
+                    print("Sample batch data")
+                    print("X shape: ", X.shape)
+                    print("y shape: ", y.shape)
 
-        # Print an example of prediction vs actual data
-        print("Example test data")
-        print("Predicted: \n", predictions)
-        print("Actual: \n", y)
+#         Print an example of prediction vs actual data
+#         print("Example test data")
+#         print("Predicted: \n", predictions)
+#         print("Actual: \n", y)
+
 
         start = random.randint(0, len(actual_serie) - TEST_SAMPLE_LEN)
         zero = [0 for i in range(len(actual_serie))]

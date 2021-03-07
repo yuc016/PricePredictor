@@ -76,9 +76,9 @@ def get_dataloaders(config, rand_seed):
     val_dataset = price_series_dataset(X_val, y_val)
     test_dataset = price_series_dataset(X_test, y_test)
 
-    print("Train dataset size: ", len(train_dataset))
-    print("Validation dataset size: ", len(val_dataset))
-    print("Test dataset size: ", len(test_dataset))
+    print("Train data size: ", len(train_dataset))
+    print("Validation data size: ", len(val_dataset))
+    print("Test data size: ", len(test_dataset))
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size)

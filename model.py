@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class PPNetV1(nn.Module):
+class LSTMNetV1(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
-        super(PPNetV1, self).__init__()
+        super(LSTMNetV1, self).__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.linear = nn.Sequential(
             nn.Dropout(dropout_rate),
@@ -37,7 +37,7 @@ class PPNetV1(nn.Module):
         # Return predictions at target serie time steps
         return predicted_series
 
-class PPNetV2(nn.Module):
+class LSTMNetV2(nn.Module):
 #     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
 #         super(PPNetV2, self).__init__()
 #         self.encoder = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
@@ -59,15 +59,15 @@ class PPNetV2(nn.Module):
 
     
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
-        super(PPNetV2, self).__init__()
+        super(LSTMNetV2, self).__init__()
         self.enhance_serie = nn.Sequential(
-                    nn.Conv1d(in_channels=2, out_channels=16, kernel_size=7, stride=1, padding=3, padding_mode='replicate'),
+                    nn.Conv1d(in_channels=input_size, out_channels=32, kernel_size=7, stride=1, padding=3, padding_mode='replicate'),
 #                     nn.ReLU(),
 #                     nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2, padding_mode='replicate'),
                     nn.ReLU()
                 )
         
-        self.encoder = nn.LSTM(16, hidden_size, num_layers, batch_first=True)
+        self.encoder = nn.LSTM(32, hidden_size, num_layers, batch_first=True)
 
         self.decoder = nn.Sequential(
             nn.Dropout(dropout_rate),
