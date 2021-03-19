@@ -38,8 +38,12 @@ class NeuralNetTrainer:
     
     # Initialize net, optimizer, criterion and stats
     def init_experiment(self, config):
+        
         input_size = config["model"]["input_size"]
-        hidden_size = config["model"]["hidden_size"]
+        l1_size = config["model"]["l1_size"]
+        conv1_size = config["model"]["conv1_size"]
+        l2_size = config["model"]["l2_size"]
+        lstm_size = config["model"]["lstm_size"]
         num_lstm_layers = config["model"]["num_lstm_layers"]
         len_decode_serie = config["model"]["len_decode_serie"]
         dropout_rate = config["model"]["dropout_rate"]
@@ -47,7 +51,7 @@ class NeuralNetTrainer:
         learning_rate = config["training"]["learning_rate"]
         weight_decay = config["training"]["weight_decay"]
 
-        self.net = model.LSTMNetV2(input_size, hidden_size, num_lstm_layers, len_decode_serie, dropout_rate)
+        self.net = model.LSTMNetV2(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
         self.best_net = copy.deepcopy(self.net)
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate, weight_decay=weight_decay, eps=0)
         self.criterion = torch.nn.MSELoss(reduction="sum")
@@ -79,6 +83,8 @@ class NeuralNetTrainer:
         num_epochs = self.config["training"]["num_epochs"]
 
         overfit = 0
+        save_ct = 0
+        save_period = self.config["experiment"]["save_period"]
 
         while self.epoch < num_epochs:
             print("Epoch ", self.epoch)
@@ -103,13 +109,16 @@ class NeuralNetTrainer:
                     break
 
             self.epoch += 1
+            
+            # Save model state and log statistics periodically
+            save_ct += 1
+            if save_ct % save_period == 0:
+                save_ct = 0
+                fileutils.save_experiment_state(self)
+                fileutils.log_stats(self.train_losses, self.val_losses, self.experiment_dir_path)
 
         print("Best validation loss:", self.best_score)
             
-        # Save model state and log statistics
-        fileutils.save_experiment_state(self)
-        fileutils.log_stats(self.train_losses, self.val_losses, self.experiment_dir_path)
-
 
     # Train an iteration through the training data in train_dataloader
     #   and optimize the neural net 
@@ -162,7 +171,7 @@ class NeuralNetTrainer:
     def test(self):
         self.best_net.eval()
 #         torch.cuda.empty_cache()
-#         self.best_net.cpu()
+        self.best_net.cpu()
 
         test_loss = 0
 
@@ -171,7 +180,7 @@ class NeuralNetTrainer:
 
         with torch.no_grad():
             for i, (X, y) in enumerate(self.test_dataloader):
-                X, y = X.cuda(), y.cuda()
+#                 X, y = X.cuda(), y.cuda()
 
                 predictions = self.best_net(X)
                 loss = self.criterion(predictions, y)
@@ -183,15 +192,15 @@ class NeuralNetTrainer:
 
                 test_loss += loss.item()
                 
+                # Print an example of prediction vs actual data
                 if i == 0:
                     print("Sample batch data")
                     print("X shape: ", X.shape)
                     print("y shape: ", y.shape)
+#                     print("X: ", X)
+#                     print("y: ", y)
+#                     print("prediction: ", predictions)
 
-#         Print an example of prediction vs actual data
-#         print("Example test data")
-#         print("Predicted: \n", predictions)
-#         print("Actual: \n", y)
 
 
         start = random.randint(0, len(actual_serie) - TEST_SAMPLE_LEN)

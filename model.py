@@ -58,21 +58,27 @@ class LSTMNetV2(nn.Module):
 #         return decoder_out
 
     
-    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_rate):
+    def __init__(self, input_size, l1_size, conv1_size, lstm_size, num_layers, l2_size, output_size, dropout_rate):
         super(LSTMNetV2, self).__init__()
-        self.enhance_serie = nn.Sequential(
-                    nn.Conv1d(in_channels=input_size, out_channels=32, kernel_size=7, stride=1, padding=3, padding_mode='replicate'),
-#                     nn.ReLU(),
-#                     nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2, padding_mode='replicate'),
-                    nn.ReLU()
+        self.lin1 = nn.Sequential(
+                        nn.Linear(input_size, l1_size),
+                        nn.ReLU(),
+                        nn.Dropout(dropout_rate)
+                    )
+            
+        self.conv1d = nn.Sequential(
+                    nn.Conv1d(in_channels=l1_size, out_channels=conv1_size, kernel_size=7, stride=1, padding=3, padding_mode='replicate'),
+                    nn.ReLU(),
+                    nn.Dropout(dropout_rate)
                 )
         
-        self.encoder = nn.LSTM(32, hidden_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(conv1_size, lstm_size, num_layers, batch_first=True)
 
-        self.decoder = nn.Sequential(
+        self.lin2 = nn.Sequential(
             nn.Dropout(dropout_rate),
+            nn.Linear(lstm_size, l2_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
+            nn.Linear(l2_size, output_size)
         )
         
 #         self.encoder1 = nn.LSTM(64, 64, 1, batch_first=True)
@@ -95,10 +101,17 @@ class LSTMNetV2(nn.Module):
         
     # input_series - (Batch size x sequence length x input_size)
     def forward(self, input_series, debug_print=False):
-        x = self.enhance_serie(input_series.permute(0,2,1)).permute(0,2,1)
-        x, _ = self.encoder(x)
+#         print(input_series.shape)
+        x = self.lin1(input_series)
+#         print(x.shape)
+        x = self.conv1d(x.permute(0,2,1)).permute(0,2,1)
+#         print(x.shape)
+        x, _ = self.lstm(x)
+#         print(x.shape)
         x = x[:, -1:, :].squeeze(1)
-        x = self.decoder(x)
+#         print(x.shape)
+        x = self.lin2(x)
+#         print(x.shape)
         return x
         
 #         encoder_out, _ = self.encoder1(encoder_out)
