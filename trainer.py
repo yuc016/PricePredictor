@@ -168,7 +168,7 @@ class NeuralNetTrainer:
         return sqrt(val_loss / len(self.val_dataloader.dataset) / y.shape[1])
 
 
-    def test(self):
+    def test(self, testName=""):
         self.best_net.eval()
 #         torch.cuda.empty_cache()
         self.best_net.cpu()
@@ -187,8 +187,8 @@ class NeuralNetTrainer:
 
                 for j in range(len(y)):
                     for k in range(len(y[0])):
-                        actual_serie.append(y[j, k])
-                        predicted_serie.append(predictions[j, k])
+                        actual_serie.append(y[j, k].item())
+                        predicted_serie.append(predictions[j, k].item())
 
                 test_loss += loss.item()
                 
@@ -202,14 +202,56 @@ class NeuralNetTrainer:
 #                     print("prediction: ", predictions)
 
 
-
-        start = random.randint(0, len(actual_serie) - TEST_SAMPLE_LEN)
-        zero = [0 for i in range(len(actual_serie))]
-        fileutils.make_plot([actual_serie[start:start+TEST_SAMPLE_LEN], predicted_serie[start:start+TEST_SAMPLE_LEN]], 
-                            ["Actual", "Predicted"], "Time step", 
-                            "Rate of change", "test_data_regression",
-                            self.experiment_dir_path)
-
         # Average by data points and data serie length, take square root to get RMSD from MSE
         test_loss = sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1])
         print("Test loss:", test_loss)
+        
+        actual_net_serie, my_net_serie = test_trade(actual_serie, predicted_serie)
+        fileutils.make_plot([actual_net_serie, my_net_serie],
+                            ["Actual Product Worth", "My Net Worth"], 
+                            "Time step", "Percentage of Original Capital", 
+                            "test_trade"+testName, self.experiment_dir_path)
+#         fileutils.make_plot([actual_net_serie],
+#                             ["Actual Product Worth"], 
+#                             "Time step", "Percentage of Original Capital", 
+#                             "test_trade", self.experiment_dir_path)
+        
+        start = random.randint(0, len(actual_serie) - TEST_SAMPLE_LEN)
+        zero = [0 for i in range(len(actual_serie))]
+        fileutils.make_plot([actual_serie[start:start+TEST_SAMPLE_LEN], predicted_serie[start:start+TEST_SAMPLE_LEN]],
+                            ["Actual", "Predicted"], "Time step", 
+                            "Rate of change", "test_data_regression"+testName,
+                            self.experiment_dir_path)
+        
+#         print(my_net_serie[start:start+TEST_SAMPLE_LEN])
+#         print(actual_serie[start:start+TEST_SAMPLE_LEN])
+#         print(predicted_serie[start:start+TEST_SAMPLE_LEN])
+
+
+def test_trade(actual_serie, predicted_serie):
+    actual_net_serie = [100]
+    my_net_serie = [100]
+    actual_net = 100
+    my_net = 100
+    
+    bought_in = False
+    
+    for i in range(len(actual_serie)):
+        # If predict growth, buy in
+        bought_in = True if predicted_serie[i] > 0 else False
+        
+        # Update equity net worth
+        actual_net = actual_net * (1 + actual_serie[i] / 1000)
+        
+        # my net worth move with actual change if bought in
+        if bought_in:
+            my_net = my_net * (1 + actual_serie[i] / 1000)
+        
+        actual_net_serie.append(actual_net)
+        my_net_serie.append(my_net)
+        
+    print("Actual product net worth (holding through the time period): {:.2f}%".format(actual_net))
+    print("My net worth (trading hourly by predicting rate of change for next hour): {:.2f}%".format(my_net))
+    
+    return actual_net_serie, my_net_serie
+    

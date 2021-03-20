@@ -34,6 +34,6 @@ if __name__ == "__main__":
     print("Experiment name: ", experiment_name)
 
     trainer = NeuralNetTrainer(config_file_path, experiment_dir_path)
-    trainer.test()
+    trainer.test("_init")
     trainer.go() # Training/validating loops
     trainer.test()

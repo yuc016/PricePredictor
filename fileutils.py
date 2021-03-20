@@ -60,7 +60,7 @@ def save_experiment_state(trainer):
 
 def log_stats(train_losses, val_losses, dir_path):
     make_plot([train_losses, val_losses], ["Training loss", "Validation loss"], 
-              "Epoch", "Loss Curve (Last Training Session)", "loss_curve.png", 
+              "Epoch", "Loss Curve", "loss_curve.png", 
               dir_path)
 
 
