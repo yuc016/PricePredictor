@@ -51,7 +51,7 @@ class NeuralNetTrainer:
         learning_rate = config["training"]["learning_rate"]
         weight_decay = config["training"]["weight_decay"]
 
-        self.net = model.LSTMNetV2(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+        self.net = model.LSTMNetV1(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
         self.best_net = copy.deepcopy(self.net)
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate, weight_decay=weight_decay, eps=0)
         self.criterion = torch.nn.MSELoss(reduction="sum")
@@ -251,7 +251,7 @@ def test_trade(actual_serie, predicted_serie):
         my_net_serie.append(my_net)
         
     print("Actual product net worth (holding through the time period): {:.2f}%".format(actual_net))
-    print("My net worth (trading hourly by predicting rate of change for next hour): {:.2f}%".format(my_net))
+    print("My net worth (frequent trading by predicting rate of change for next time step): {:.2f}%".format(my_net))
     
     return actual_net_serie, my_net_serie
     
