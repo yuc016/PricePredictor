@@ -10,14 +10,19 @@ def get_data_tensor_from_path(X_file_path, y_file_path):
 # Split the data tensor X and corresponding tensor y into two sets
 #   set 1 is a random continuous trunk of data from X
 # Return - (X1, X2), (y1, y2)
-def split_data(X, y, set_1_percentage, print_start_i=False):
+def split_data(X, y, set_1_percentage, set_1_start=-1, print_set_1_interval=False):
     set_1_size = int(X.shape[0] * set_1_percentage)
     set_2_size = X.shape[0] - set_1_size
 
-    set_1_start = random.randint(0, len(X) - set_1_size)
+    if set_1_start == -1:
+        set_1_start = random.randint(0, len(X) - set_1_size)
+    else:
+        # Check provided set 1 start index valid
+        if set_1_start < 0 or set_1_start + set_1_size > len(X):
+            raise Exception("Invalid set_1_start given, must be in range [0, ", len(X) - set_1_size, "]")
     set_1_end = set_1_start + set_1_size
 
-    if print_start_i:
+    if print_set_1_interval:
         print("Test data time interval: [", set_1_start, ",", set_1_end, "]")
 
     set_1_X = X[set_1_start:set_1_end]
@@ -57,7 +62,7 @@ def min_max_normalize(X, y):
     return X, y
 
 
-def get_dataloaders(config, rand_seed):
+def get_dataloaders(config, rand_seed, test_set_start_i=-1):
     X_file_path = config["dataset"]["X_file_path"]
     y_file_path = config["dataset"]["y_file_path"]
     test_set_percentage = config["dataset"]["test_set_percentage"]
@@ -69,7 +74,7 @@ def get_dataloaders(config, rand_seed):
     X, y = get_data_tensor_from_path(X_file_path, y_file_path)
     
     # Test data is continuous for better visualization
-    (X_test, X), (y_test, y) = split_data(X, y, test_set_percentage, True)
+    (X_test, X), (y_test, y) = split_data(X, y, test_set_percentage, test_set_start_i, True)
     
     # Training and validation data is shuffled
     X, y = shuffle_data(X, y)

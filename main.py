@@ -41,6 +41,7 @@ if __name__ == "__main__":
         trainer.test("_init")
         # Save a copy of config file after test run to validate config settings
         os.system("cp " + config_file_path + " " + os.path.join(experiment_dir_path, config_name))
+        print("Saved a copy of config file in the experiment folder")
         
     trainer.go() # Training/validating loops
     trainer.test()

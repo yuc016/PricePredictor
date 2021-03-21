@@ -14,8 +14,6 @@ class NeuralNetTrainer:
     def __init__(self, config_file_path, experiment_dir_path):
 
         self.config = fileutils.get_config(config_file_path)
-        print("Configuration:")
-        print(self.config)
         
         self.experiment_dir_path = experiment_dir_path
         
@@ -34,11 +32,13 @@ class NeuralNetTrainer:
         
         self.init_experiment(self.config)
         
-        self.train_dataloader, self.val_dataloader, self.test_dataloader = dataset.get_dataloaders(self.config, self.rand_seed)
+        test_set_start_index = self.config["dataset"]["test_set_start_index"]
+        self.train_dataloader, self.val_dataloader, self.test_dataloader = dataset.get_dataloaders(self.config, self.rand_seed, test_set_start_index)
     
     # Initialize net, optimizer, criterion and stats
     def init_experiment(self, config):
         
+        model_name = config["model"]["name"]
         input_size = config["model"]["input_size"]
         l1_size = config["model"]["l1_size"]
         conv1_size = config["model"]["conv1_size"]
@@ -50,8 +50,14 @@ class NeuralNetTrainer:
 
         learning_rate = config["training"]["learning_rate"]
         weight_decay = config["training"]["weight_decay"]
-
-        self.net = model.LSTMNetV1(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+        
+        if model_name == "LSTMNetV1":
+            self.net = model.LSTMNetV1(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+        elif model_name == "LSTMNetV2":
+            self.net = model.LSTMNetV2(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+        else:
+            raise("Unknown model name", model_name)
+            
         self.best_net = copy.deepcopy(self.net)
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate, weight_decay=weight_decay, eps=0)
         self.criterion = torch.nn.MSELoss(reduction="sum")
@@ -118,6 +124,8 @@ class NeuralNetTrainer:
                 fileutils.log_stats(self.train_losses, self.val_losses, self.experiment_dir_path)
 
         print("Best validation loss:", self.best_score)
+        fileutils.save_experiment_state(self)
+        fileutils.log_stats(self.train_losses, self.val_losses, self.experiment_dir_path)
             
 
     # Train an iteration through the training data in train_dataloader

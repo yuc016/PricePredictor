@@ -9,22 +9,28 @@ class LSTMNetV1(nn.Module):
         self.conv1d = nn.Sequential(
             nn.Conv1d(in_channels=input_size, out_channels=conv1_size, kernel_size=7, stride=1, padding=3, padding_mode='replicate'),
             nn.ReLU(),
+            nn.Conv1d(in_channels=conv1_size, out_channels=conv1_size * 2, kernel_size=5, stride=1, padding=2, padding_mode='replicate'),
+            nn.ReLU(),
             nn.Dropout(dropout_rate)
         )
         
-        self.lstm = nn.LSTM(conv1_size, lstm_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size, lstm_size, num_layers, batch_first=True)
 
         self.lin1 = nn.Sequential(
-            nn.Dropout(dropout_rate),
-            nn.Linear(lstm_size, l2_size),
+#             nn.Dropout(dropout_rate),
+#             nn.Flatten(),
+#             nn.Linear(lstm_size, l2_size),
             nn.ReLU(),
-            nn.Linear(l2_size, output_size)
+            nn.Dropout(dropout_rate),
+            nn.Linear(lstm_size, output_size)
         )
         
         
     # input_series - (Batch size x sequence length x input_size)
     def forward(self, input_series, debug_print=False):
-        x = self.conv1d(input_series.permute(0,2,1)).permute(0,2,1)
+        x = input_series
+#         print(x.shape)
+#         x = self.conv1d(input_series.permute(0,2,1)).permute(0,2,1)
 #         print(x.shape)
         x, _ = self.lstm(x)
 #         print(x.shape)
