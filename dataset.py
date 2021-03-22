@@ -10,14 +10,19 @@ def get_data_tensor_from_path(X_file_path, y_file_path):
 # Split the data tensor X and corresponding tensor y into two sets
 #   set 1 is a random continuous trunk of data from X
 # Return - (X1, X2), (y1, y2)
-def split_data(X, y, set_1_percentage, print_start_i=False):
+def split_data(X, y, set_1_percentage, set_1_start=-1, print_set_1_interval=False):
     set_1_size = int(X.shape[0] * set_1_percentage)
     set_2_size = X.shape[0] - set_1_size
 
-    set_1_start = random.randint(0, len(X) - set_1_size)
+    if set_1_start == -1:
+        set_1_start = random.randint(0, len(X) - set_1_size)
+    else:
+        # Check provided set 1 start index valid
+        if set_1_start < 0 or set_1_start + set_1_size > len(X):
+            raise Exception("Invalid set_1_start given, must be in range [0, ", len(X) - set_1_size, "]")
     set_1_end = set_1_start + set_1_size
 
-    if print_start_i:
+    if print_set_1_interval:
         print("Test data time interval: [", set_1_start, ",", set_1_end, "]")
 
     set_1_X = X[set_1_start:set_1_end]
@@ -56,8 +61,17 @@ def min_max_normalize(X, y):
 
     return X, y
 
+# Get single dataloader from tensor
+def get_dataloader_from_tensor(config, X, y):
+    batch_size = config["training"]["batch_size"]
 
-def get_dataloaders(config, rand_seed):
+    dataset = time_series_dataset(X, y)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+    return dataloader
+
+# Get train, validation and test dataloaders from file path
+def get_dataloaders(config, rand_seed, test_set_start_i=-1):
     X_file_path = config["dataset"]["X_file_path"]
     y_file_path = config["dataset"]["y_file_path"]
     test_set_percentage = config["dataset"]["test_set_percentage"]
@@ -68,17 +82,20 @@ def get_dataloaders(config, rand_seed):
 
     X, y = get_data_tensor_from_path(X_file_path, y_file_path)
     
-    (X_test, X), (y_test, y) = split_data(X, y, test_set_percentage, True)
+    # Test data is continuous for better visualization
+    (X_test, X), (y_test, y) = split_data(X, y, test_set_percentage, test_set_start_i, True)
+    
+    # Training and validation data is shuffled
     X, y = shuffle_data(X, y)
     (X_val, X_train), (y_val, y_train) = split_data(X, y, val_set_percentage)
     
-    train_dataset = price_series_dataset(X_train, y_train)
-    val_dataset = price_series_dataset(X_val, y_val)
-    test_dataset = price_series_dataset(X_test, y_test)
+    train_dataset = time_series_dataset(X_train, y_train)
+    val_dataset = time_series_dataset(X_val, y_val)
+    test_dataset = time_series_dataset(X_test, y_test)
 
-    print("Train dataset size: ", len(train_dataset))
-    print("Validation dataset size: ", len(val_dataset))
-    print("Test dataset size: ", len(test_dataset))
+    print("Train data size: ", len(train_dataset))
+    print("Validation data size: ", len(val_dataset))
+    print("Test data size: ", len(test_dataset))
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size)
@@ -87,7 +104,7 @@ def get_dataloaders(config, rand_seed):
     return train_dataloader, val_dataloader, test_dataloader
 
 
-class price_series_dataset(Dataset):
+class time_series_dataset(Dataset):
     def __init__(self, X, y):
         self.X = X
         self.y = y

@@ -4,23 +4,29 @@
         "X_file_path": "./data/X.pt",
         "y_file_path": "./data/y.pt",
         "test_set_percentage": 0.10,
-        "val_set_percentage": 0.2
+        "val_set_percentage": 0.2,
+        "test_set_start_index": 39420
     },
     "model": {
-        "name": "PPNetV1",
+        "name": "LSTMNetV1",
         "input_size": 1,
-        "hidden_size": 128,
-        "num_lstm_layers": 4,
-        "len_decode_serie": 1
+        "l1_size": 16, 
+        "conv1_size": 256, 
+        "lstm_size": 100, 
+        "num_lstm_layers": 1,
+        "l2_size": 128, 
+        "len_decode_serie": 1,
+        "dropout_rate": 0.4
     },
     "training": {
-        "num_epochs": 200,
         "num_folds": 1,
+        "num_epochs": 60,
         "batch_size": 32,
-        "learning_rate": 0.01,
-        "overfit_limit": 1000,
-        "dropout_rate": 0.35,
-        "weight_decay": 0.001,
-        "momentum": 0.2
+        "learning_rate": 0.001,
+        "overfit_limit": 25,
+        "weight_decay": 0.0000001
+    },
+    "experiment": {
+        "save_period": 20
     }
 }
