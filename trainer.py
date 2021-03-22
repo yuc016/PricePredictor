@@ -89,6 +89,7 @@ class NeuralNetTrainer:
     # Training + validation loops
     def go(self):
         print("GO!")
+        print("Best validation loss:", self.best_score)
 
         self.load_data_for_training()
 
@@ -214,7 +215,6 @@ class NeuralNetTrainer:
                     print("Sample batch data")
                     print("X shape: ", X.shape)
                     print("y shape: ", y.shape)
-
         # Average by data points and data serie length, take square root to get RMSD from MSE
         test_loss = sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1])
         print("Test loss:", test_loss)
