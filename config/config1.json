@@ -15,6 +15,7 @@
         "lstm_size": 200, 
         "num_lstm_layers": 3,
         "l2_size": 64, 
+        "len_encode_serie": 1,
         "len_decode_serie": 1,
         "dropout_rate": 0.4
     },
