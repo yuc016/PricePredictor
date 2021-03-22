@@ -102,7 +102,7 @@ if __name__ == "__main__":
     config_name = sys.argv[1]
     config_file_path = os.path.join(experiment_dir_path, "config")
     if not os.path.isfile(config_file_path):
-        raise Exception("config1 doesn't exist:")
+        raise Exception("config doesn't exist:")
 
     config = fileutils.get_config(config_file_path)
 
