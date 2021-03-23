@@ -53,9 +53,11 @@ class NeuralNetTrainer:
         weight_decay = config["training"]["weight_decay"]
         
         if model_name == "LSTMNetV1":
-            self.net = model.LSTMNetV1(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+            self.net = model.LSTMNetV1(input_size, lstm_size, num_lstm_layers, len_decode_serie, dropout_rate)
         elif model_name == "LSTMNetV2":
-            self.net = model.LSTMNetV2(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+            self.net = model.LSTMNetV2(input_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+        elif model_name == "LSTMNetV3":
+            self.net = model.LSTMNetV3(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
         else:
             raise("Unknown model name", model_name)
             
@@ -89,10 +91,6 @@ class NeuralNetTrainer:
     # Training + validation loops
     def go(self):
         print("GO!")
-        print("Best validation loss:", self.best_score)
-
-        self.load_data_for_training()
-
         print("Best validation loss:", self.best_score)
 
         overfit_limit = self.config["training"]["overfit_limit"]

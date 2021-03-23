@@ -19,7 +19,7 @@ def split_data(X, y, set_1_percentage, set_1_start=-1, print_set_1_interval=Fals
     else:
         # Check provided set 1 start index valid
         if set_1_start < 0 or set_1_start + set_1_size > len(X):
-            raise Exception("Invalid set_1_start given, must be in range [0, ", len(X) - set_1_size, "]")
+            raise Exception("Invalid set_1_start given, must be in range [0, " + str(len(X) - set_1_size) + "]")
     set_1_end = set_1_start + set_1_size
 
     if print_set_1_interval:

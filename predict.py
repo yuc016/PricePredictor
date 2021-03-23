@@ -10,12 +10,11 @@ import dataset
 from trainer import NeuralNetTrainer
 
 
-EXP_ROOT_DIR = "./experiment"
-DATA_ROOT_DIR = "./data/live"
+EXP_ROOT_DIR = "experiment"
+DATA_ROOT_DIR = "data/live"
 DATA_FILE_NAME = "amCharts.csv"
 
-
-def get_data_tensor(config):
+def get_data_tensor_from_file(config):
 
     data_file_path = os.path.join(DATA_ROOT_DIR, DATA_FILE_NAME)
 
@@ -105,9 +104,9 @@ if __name__ == "__main__":
         raise Exception("config doesn't exist:")
 
     config = fileutils.get_config(config_file_path)
-
+    
     # Prep data
-    X, y = get_data_tensor(config)
+    X, y = get_data_tensor_from_file(config)
     dataloader = dataset.get_dataloader_from_tensor(config, X, y)
 
     # Prep network
