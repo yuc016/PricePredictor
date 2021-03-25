@@ -53,9 +53,9 @@ class LSTMNetV2(nn.Module):
     # input_series - (Batch size x sequence length x input_size)
     def forward(self, input_series, debug_print=False):
         x = input_series
-#         print(x.shape)
-        x = self.conv1d(input_series.permute(0,2,1)).permute(0,2,1)
-#         print(x.shape)
+        # print(x.shape)
+        x = self.conv1d(x.permute(0,2,1)).permute(0,2,1)
+        # print(x.shape)
         x, _ = self.lstm(x)
         # print(x.shape)
         x = x[:, -1:, :].squeeze(1)

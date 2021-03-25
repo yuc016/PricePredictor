@@ -4,16 +4,15 @@ import json
 import os
 import matplotlib.pyplot as plt
 
-def get_config(file_path):
+def get_config_from_file(file_path):
     with open(file_path) as json_file:
         data = json.load(json_file)
     return data
 
+
 def load_experiment_state(trainer):
     path = os.path.join(trainer.experiment_dir_path, "experiment_state.pt")
-    if os.path.isfile(path):
-        print("Experiment state loaded!")
-        
+    if os.path.isfile(path):        
         experiment_state = torch.load(path)
         trainer.rand_seed = experiment_state['seed']
         trainer.epoch = experiment_state['epoch']
@@ -34,10 +33,13 @@ def load_experiment_state(trainer):
             for k, v in state.items():
                 if isinstance(v, torch.Tensor):
                     state[k] = v.cuda()
+
+        print("Experiment state loaded!")
     else:
         print("No saved model state found!")
         trainer.rand_seed = randint(0, 1234567890)
         trainer.epoch = 0
+
 
 def save_experiment_state(trainer):
     net_state = trainer.net.state_dict()
@@ -58,7 +60,8 @@ def save_experiment_state(trainer):
     torch.save(experiment_state, path)
     print("Experiment state saved!")
 
-def log_stats(train_losses, val_losses, dir_path):
+
+def log_loss_stats(train_losses, val_losses, dir_path):
     make_plot([train_losses, val_losses], ["Training loss", "Validation loss"], 
               "Epoch", "Loss Curve", "loss_curve.png", 
               dir_path)

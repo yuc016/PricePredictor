@@ -61,14 +61,16 @@ def min_max_normalize(X, y):
 
     return X, y
 
+
 # Get single dataloader from tensor
-def get_dataloader_from_tensor(config, X, y):
+def get_dataloader_from_tensor(config, X, y, shuffle=False):
     batch_size = config["training"]["batch_size"]
 
     dataset = time_series_dataset(X, y)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
     return dataloader
+
 
 # Get train, validation and test dataloaders from file path
 def get_dataloaders(config, rand_seed, test_set_start_i=-1):
