@@ -9,7 +9,7 @@ from trainer import NeuralNetTrainer
 
 ####
 # Customizable data maker and data destination
-from data_makers.dm_coinbase import make_data
+from data_makers.dm_coinbase import make_input
 DATA_FILE_PATH = "data/live/coinbase/data.csv"
 
 # from data_makers.dm_cointelegraph import make_data
@@ -19,17 +19,22 @@ DATA_FILE_PATH = "data/live/coinbase/data.csv"
 
 EXP_ROOT_DIR = "experiments"
 
-MODE = 2 # 1 for testing 2 for predicting
 
 if __name__ == "__main__":
+    print()
     config_file_path = None
     experiment_dir_path = None
 
     # Must provide an experiment directory
-    if len(sys.argv) < 2:
-        raise Exception("Usage: python main.py <experiment_name>")
+    if len(sys.argv) < 3:
+        raise Exception("Usage: python main.py <MODE> <experiment_name>\n" +
+                        "\tMode: use t for full time serie model testing, p for single timestep predicting")
 
-    experiment_name = sys.argv[1]
+    mode = sys.argv[1]
+    if mode not in ['t', 'p']:
+        raise Exception("Mode not supported")
+    
+    experiment_name = sys.argv[2]
     experiment_dir_path = os.path.join(EXP_ROOT_DIR, experiment_name)
 
     # Check experiment exists
@@ -46,17 +51,17 @@ if __name__ == "__main__":
     
     
     # Prep data
-    X, y = make_data(config["dataset"]["time_interval"], config["model"]["len_encode_serie"], config["model"]["len_decode_serie"], DATA_FILE_PATH)
-
+    X = make_input(config["dataset"]["time_interval"], config["model"]["len_encode_serie"], config["model"]["len_decode_serie"], DATA_FILE_PATH)
+    
     # Prep network
     trainer = NeuralNetTrainer(config_file_path, experiment_dir_path)
 
-    if MODE == 1:
-        dataloader = dataset.get_dataloader_from_tensor(config, X, y)
-        trainer.test_dataloader = dataloader
-        trainer.test("_test")
-    elif MODE == 2:
-        latest_serie = torch.cat([X[-1, 1:], y[-1].unsqueeze(1)], dim=0)
-        prediction = trainer.single_predict(latest_serie)
+    if mode == 't':
+        pass
+#         dataloader = dataset.get_dataloader_from_tensor(config, X, y)
+#         trainer.test_dataloader = dataloader
+#         trainer.test("_test")
+    elif mode == 'p':
+        prediction = trainer.single_predict(X)
         print("Predicted rate of change at next time step: {:.3f}%".format(prediction / 10))
         

@@ -75,6 +75,7 @@ class NeuralNetTrainer:
         print("Random seed: ", self.rand_seed)
         print("Current epoch:", self.epoch)
         print("Best validation loss:", self.best_score)
+        print()
 
         # Use GPU for training
         if torch.cuda.is_available():
