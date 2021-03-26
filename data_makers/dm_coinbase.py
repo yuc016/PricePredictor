@@ -5,8 +5,6 @@ import csv
 import pandas as pd
 import torch
 
-NEWEST = False
-
 def make_input(time_interval, encode_length, decode_length, data_file_path):
     fetch_data(time_interval, data_file_path)
     return get_input_tensor(time_interval, encode_length, decode_length, data_file_path)
