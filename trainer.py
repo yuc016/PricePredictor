@@ -9,7 +9,7 @@ from math import sqrt
 
 
 class NeuralNetTrainer:
-    def __init__(self, config_file_path, experiment_dir_path):
+    def __init__(self, config_file_path, experiment_dir_path, cuda=True, print_info=True):
 
         self.config = fileutils.get_config_from_file(config_file_path)
         
@@ -32,10 +32,10 @@ class NeuralNetTrainer:
         self.val_dataloader = None
         self.test_dataloader = None
 
-        self.init_experiment(self.config)
+        self.init_experiment(self.config, print_info)
         
     # Initialize net, optimizer, criterion and stats
-    def init_experiment(self, config):
+    def init_experiment(self, config, cuda=True, print_info=True):
         
         model_name = config["model"]["name"]
         input_serie_len = config["data"]["input_serie_len"]
@@ -70,21 +70,19 @@ class NeuralNetTrainer:
         self.best_score = float("inf")
 
         # Load saved state if there is one
-        fileutils.load_experiment_state(self)
+        fileutils.load_experiment_state(self, cuda)
 
-        print("Random seed: ", self.rand_seed)
-        print("Current epoch:", self.epoch)
-        print("Best validation loss:", self.best_score)
-        print()
+        if print_info:
+            print("Random seed: ", self.rand_seed)
+            print("Current epoch:", self.epoch)
+            print("Best validation loss:", self.best_score)
+            print()
 
         # Use GPU for training
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and cuda:
             self.net = self.net.cuda().float()
             self.best_net = self.best_net.cuda().float()
             self.criterion = self.criterion.cuda()
-        else:
-            raise("CUDA Not Available, CPU training not supported")
-    
 
     def load_data_for_training(self):
         test_set_start_index = self.config["data"]["test_set_start_index"]

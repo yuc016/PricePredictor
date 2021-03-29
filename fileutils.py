@@ -10,7 +10,7 @@ def get_config_from_file(file_path):
     return data
 
 
-def load_experiment_state(trainer):
+def load_experiment_state(trainer, cuda=True):
     path = os.path.join(trainer.experiment_dir_path, "experiment_state.pt")
     if os.path.isfile(path):        
         experiment_state = torch.load(path)
@@ -29,10 +29,11 @@ def load_experiment_state(trainer):
 
         # Put optimizer data onto CUDA core
         # Effect equals optimizer.cuda() although torch.optim doesn't have cuda() function
-        for state in trainer.optimizer.state.values():
-            for k, v in state.items():
-                if isinstance(v, torch.Tensor):
-                    state[k] = v.cuda()
+        if cuda:
+            for state in trainer.optimizer.state.values():
+                for k, v in state.items():
+                    if isinstance(v, torch.Tensor):
+                        state[k] = v.cuda()
 
         print("Experiment state loaded!")
     else:

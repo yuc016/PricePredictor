@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime
+import time
 
 import csv
 import pandas as pd
@@ -30,6 +30,7 @@ def fetch_data(time_interval):
 def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_length, decode_length):
     # Convert to panda dataframe
     time_series_df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
+    print(time_series_df)
     
     # Assert that no timestep is missing
     time_stamps = time_series_df["time"]
@@ -38,9 +39,8 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
 #         assert(time_stamps[i] + 300 == time_stamps[i+1])
         assert(time_stamps[i] + time_interval == time_stamps[i+1])
         
-    # Make time serie tensor
-    columns = ["open", "high", "low", "close", "volume"]
-    
+   # Make time serie tensor
+    columns = ["time", "open", "high", "low", "close", "volume"]
     col_i = {}
     for i in range(len(columns)):
         col_i[columns[i]] = i 
@@ -48,10 +48,19 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
     time_series_df = time_series_df[columns].astype(float)
     time_series_tensor = torch.tensor(time_series_df.values)
     
-    closing_price_roc = (time_series_tensor[1:, 3] - time_series_tensor[:-1, 3]) / time_series_tensor[:-1, 3] * 1000
+    # Keep to last full time bucket
+    curr_time = time.time()
+    if curr_time - time_interval < time_series_tensor[-1, col_i["time"]]:
+        time_series_tensor = time_series_tensor[:-1]
+    
+    last_timestamp = time_series_tensor[-1, col_i["time"]]
+    last_close = time_series_tensor[-1, col_i["close"]]
+    
+    
+    closing_price_roc = (time_series_tensor[1:, col_i["close"]] - time_series_tensor[:-1, col_i["close"]]) / time_series_tensor[:-1, col_i["close"]] * 1000
     closing_price_roc = closing_price_roc.reshape(-1,1)
     
-    candle_stats = (time_series_tensor[1:, 0:4] / time_series_tensor[:-1, 3].reshape(-1,1) - 1) * 1000
+    candle_stats = (time_series_tensor[1:, col_i["open"]:col_i["volume"]] / time_series_tensor[:-1, col_i["close"]].reshape(-1,1) - 1) * 1000
     
     high_low_price = candle_stats[:, 1:3]
     
@@ -86,13 +95,6 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
 #         i += step_size
 #         j += 1
 
-    # Print latest data point, time (UTC - 8hr = PST)
-    print("Latest time step: ", datetime.utcfromtimestamp(time_stamps[time_stamps.size-1] - 25200).strftime('%Y-%m-%d %H:%M:%S'))
-    print("In unix time: ", int(time_stamps[time_stamps.size-1]))
-    print("Closing price: ", time_series_df["close"][time_stamps.size-1])
-    print()
-#     print("Last hour VWAP: {:.2f}".format(condensed_data_tensor[-1, -1].item()), "USD\n")
-        
 #     mini = torch.min(condensed_data_tensor).item()
 #     maxi = torch.max(condensed_data_tensor).item()
 #     mean = torch.mean(condensed_data_tensor).item()
@@ -131,5 +133,5 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
 
     pred_serie[:, :] = data_in[-encode_length:]
     
-    return X, y, pred_serie
+    return X, y, pred_serie, last_timestamp, last_close
     
