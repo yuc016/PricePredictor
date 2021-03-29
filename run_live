@@ -55,7 +55,7 @@ if __name__ == "__main__":
                    config["data"]["output_serie_len"])
 
     # Prep network
-    trainer = NeuralNetTrainer(config_file_path, experiment_dir_path, print_info=False)
+    trainer = NeuralNetTrainer(config_file_path, experiment_dir_path, cuda=False, print_info=False)
 
     if mode == 't':
         dataloader = dataset.get_dataloader_from_tensor(config, X, y)

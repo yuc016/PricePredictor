@@ -30,7 +30,6 @@ def fetch_data(time_interval):
 def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_length, decode_length):
     # Convert to panda dataframe
     time_series_df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
-    print(time_series_df)
     
     # Assert that no timestep is missing
     time_stamps = time_series_df["time"]

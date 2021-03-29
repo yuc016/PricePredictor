@@ -31,11 +31,14 @@ class NeuralNetTrainer:
         self.train_dataloader = None
         self.val_dataloader = None
         self.test_dataloader = None
+        
+        self.cuda = cuda
+        self.print_info = print_info
 
-        self.init_experiment(self.config, print_info)
+        self.init_experiment(self.config)
         
     # Initialize net, optimizer, criterion and stats
-    def init_experiment(self, config, cuda=True, print_info=True):
+    def init_experiment(self, config):
         
         model_name = config["model"]["name"]
         input_serie_len = config["data"]["input_serie_len"]
@@ -70,16 +73,16 @@ class NeuralNetTrainer:
         self.best_score = float("inf")
 
         # Load saved state if there is one
-        fileutils.load_experiment_state(self, cuda)
+        fileutils.load_experiment_state(self, self.cuda)
 
-        if print_info:
+        if self.print_info:
             print("Random seed: ", self.rand_seed)
             print("Current epoch:", self.epoch)
             print("Best validation loss:", self.best_score)
             print()
 
         # Use GPU for training
-        if torch.cuda.is_available() and cuda:
+        if self.cuda and torch.cuda.is_available():
             self.net = self.net.cuda().float()
             self.best_net = self.best_net.cuda().float()
             self.criterion = self.criterion.cuda()
@@ -204,8 +207,10 @@ class NeuralNetTrainer:
     #                 [t3,t4,t5],]          t6]
     def test(self, test_name=""):
         self.best_net.eval()
-        self.best_net.cpu()
-        self.best_net.cuda()
+        if self.cuda:
+            self.best_net.cuda()
+        else:   
+            self.best_net.cpu()
 
         test_loss = 0
         
@@ -217,8 +222,9 @@ class NeuralNetTrainer:
 
         with torch.no_grad():
             for _, (X, y) in enumerate(self.test_dataloader):
-                X = X.cuda()
-                y = y.cuda()
+                if self.cuda:
+                    X = X.cuda()
+                    y = y.cuda()
                 
                 predictions = self.best_net(X)
                 loss = self.criterion(predictions, y)
