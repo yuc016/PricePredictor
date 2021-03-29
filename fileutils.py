@@ -12,8 +12,12 @@ def get_config_from_file(file_path):
 
 def load_experiment_state(trainer, cuda=True):
     path = os.path.join(trainer.experiment_dir_path, "experiment_state.pt")
-    if os.path.isfile(path):        
-        experiment_state = torch.load(path)
+    if os.path.isfile(path):
+        if cuda:
+            experiment_state = torch.load(path)
+        else:
+            experiment_state = torch.load(path, map_location=torch.device('cpu'))
+            
         trainer.rand_seed = experiment_state['seed']
         trainer.epoch = experiment_state['epoch']
         trainer.best_score = experiment_state['best_score']
