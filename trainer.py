@@ -7,8 +7,6 @@ import dataset
 
 from math import sqrt
 
-TEST_SAMPLE_LEN = 50
-
 
 class NeuralNetTrainer:
     def __init__(self, config_file_path, experiment_dir_path):
@@ -40,24 +38,26 @@ class NeuralNetTrainer:
     def init_experiment(self, config):
         
         model_name = config["model"]["name"]
-        input_size = config["model"]["input_size"]
+        input_serie_len = config["data"]["input_serie_len"]
+        output_serie_len = config["data"]["output_serie_len"]
+        input_feature_size = config["model"]["input_feature_size"]
+        output_feature_size = config["model"]["output_feature_size"]
         l1_size = config["model"]["l1_size"]
         conv1_size = config["model"]["conv1_size"]
         l2_size = config["model"]["l2_size"]
         lstm_size = config["model"]["lstm_size"]
         num_lstm_layers = config["model"]["num_lstm_layers"]
-        len_decode_serie = config["model"]["len_decode_serie"]
         dropout_rate = config["model"]["dropout_rate"]
 
         learning_rate = config["training"]["learning_rate"]
         weight_decay = config["training"]["weight_decay"]
         
         if model_name == "LSTMNetV1":
-            self.net = model.LSTMNetV1(input_size, lstm_size, num_lstm_layers, len_decode_serie, dropout_rate)
+            self.net = model.LSTMNetV1(input_feature_size, lstm_size, num_lstm_layers, output_feature_size, dropout_rate)
         elif model_name == "LSTMNetV2":
-            self.net = model.LSTMNetV2(input_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+            self.net = model.LSTMNetV2(input_feature_size, conv1_size, lstm_size, num_lstm_layers, l2_size, output_feature_size, dropout_rate)
         elif model_name == "LSTMNetV3":
-            self.net = model.LSTMNetV3(input_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, len_decode_serie, dropout_rate)
+            self.net = model.LSTMNetV3(input_feature_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, output_feature_size, dropout_rate)
         else:
             raise("Unknown model name", model_name)
             
@@ -87,7 +87,7 @@ class NeuralNetTrainer:
     
 
     def load_data_for_training(self):
-        test_set_start_index = self.config["dataset"]["test_set_start_index"]
+        test_set_start_index = self.config["data"]["test_set_start_index"]
         self.train_dataloader, self.val_dataloader, self.test_dataloader = dataset.get_dataloaders(self.config, self.rand_seed, test_set_start_index)
     
 
@@ -172,9 +172,9 @@ class NeuralNetTrainer:
             loss.backward()
 
             self.optimizer.step()
-            
+        
         # Average by data points and data serie length, take square root to get RMSD from MSE
-        return sqrt(training_loss / len(self.train_dataloader.dataset) / y.shape[1])
+        return sqrt(training_loss / len(self.train_dataloader.dataset) / y.shape[1] / y.shape[2])
 
 
     # Run an iteration through the validation data in val_dataloader
@@ -188,14 +188,14 @@ class NeuralNetTrainer:
         with torch.no_grad():
             for i, (X, y) in enumerate(self.val_dataloader):
                 X, y = X.cuda(), y.cuda()
-
+                
                 predictions = self.net(X, y)
                 loss = self.criterion(predictions, y)
 
                 val_loss += loss.item()
 
         # Average by data points and data serie length, take square root to get RMSD from MSE
-        return sqrt(val_loss / len(self.val_dataloader.dataset) / y.shape[1])
+        return sqrt(val_loss / len(self.val_dataloader.dataset) / y.shape[1] / y.shape[2])
 
 
     # Run an iteration through the test data in test_dataloader
@@ -207,47 +207,59 @@ class NeuralNetTrainer:
     def test(self, test_name=""):
         self.best_net.eval()
         self.best_net.cpu()
+        self.best_net.cuda()
 
         test_loss = 0
+        
+        num_features = self.config["model"]["output_feature_size"]
 
-        actual_serie = []
-        predicted_serie = []
+        actual_serie = torch.empty((len(self.test_dataloader.dataset), num_features))
+        predicted_serie = torch.empty((len(self.test_dataloader.dataset), num_features))
+        i = 0
 
         with torch.no_grad():
-            for i, (X, y) in enumerate(self.test_dataloader):
-
+            for _, (X, y) in enumerate(self.test_dataloader):
+                X = X.cuda()
+                y = y.cuda()
+                
                 predictions = self.best_net(X)
                 loss = self.criterion(predictions, y)
 
                 # Append test loss of each data point in order
-                for j in range(len(y)):
-                    for k in range(len(y[0])):
-                        actual_serie.append(y[j, k].item())
-                        predicted_serie.append(predictions[j, k].item())
+#                 for j in range(len(y)):
+#                     for k in range(len(y[0])):
+#                         actual_serie.append(y[j, k].item())
+#                         predicted_serie.append(predictions[j, k].item())
+#                 for j in range(y.shape[0]):
+#                     actual_serie.append(y[j, -1].item())
+#                     predicted_serie.append(predictions[j, -1].item())
+                for j in range(y.shape[0]):
+                    actual_serie[i] = y[j]
+                    predicted_serie[i] = predictions[j]
+                    i += 1
 
                 test_loss += loss.item()
+            
+#         print(predicted_serie)
                 
-                # # Print an example of prediction vs actual data
-                # if i == 0:
-                #     print("Sample batch data")
-                #     print("X shape: ", X.shape)
-                #     print("y shape: ", y.shape)
-                #     print(type(X[0,0].item()))
-
         # Average by data points and data serie length, take square root to get RMSD from MSE
-        test_loss = sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1])
+        test_loss = sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1] / y.shape[2])
         print("Test loss:", test_loss, "\n")
                 
-        # Make a actual vs prediction plot
-        start = random.randint(0, len(actual_serie) - TEST_SAMPLE_LEN)
-        zero = [0 for i in range(len(actual_serie))]
-        fileutils.make_plot([actual_serie[start:start+TEST_SAMPLE_LEN], predicted_serie[start:start+TEST_SAMPLE_LEN]],
-                            ["Actual", "Predicted"], "Time step", 
-                            "Rate of change", "test_data_regression"+test_name,
-                            self.experiment_dir_path)
+        # Make an actual vs prediction plot
+        test_sample_len = self.config["testing"]["test_regression_sample_len"]
+        for f in range(num_features):
+            start = random.randint(0, len(actual_serie) - test_sample_len)
+            zero = [0 for i in range(len(actual_serie))]
+            fileutils.make_plot([actual_serie[start:start+test_sample_len,f], predicted_serie[start:start+test_sample_len,f]],
+                                ["Actual", "Predicted"], "Time step", 
+                                "Rate of change", "test_data_regression_feature"+str(f)+test_name,
+                                self.experiment_dir_path)
 
         # Do a test trade
-        self.test_trade(actual_serie, predicted_serie, test_name)
+        self.test_trade(self.config["testing"]["test_trade_start"],
+                        self.config["testing"]["test_trade_end"],
+                        actual_serie, predicted_serie, test_name)
 
 
     def single_predict(self, serie):
@@ -256,12 +268,16 @@ class NeuralNetTrainer:
 
         X = serie.unsqueeze(0)
         prediction = self.best_net(X).squeeze(0)
-
-        return prediction.item()
+        
+        return prediction[0].tolist()
 
                         
     # Perform test trade and save the result to experiment folder 
-    def test_trade(self, actual_serie, predicted_serie, test_name=""):
+    def test_trade(self, trade_start, trade_end, actual_serie, predict_serie, test_name=""):
+        if trade_start != -1 and trade_end != -1:
+            actual_serie = actual_serie[trade_start:trade_end]
+            predict_serie = predict_serie[trade_start:trade_end]
+        
         # Start with 100 percent
         product_net_serie = [100]
         my_net_serie = [100]
@@ -270,25 +286,48 @@ class NeuralNetTrainer:
         
         bought_in = False
         
+#         for i in range(len(actual_serie)):
+#             # If predict growth, buy in
+#             bought_in = True if predicted_serie[i] > 0 else False
+            
+#             # Update equity net worth
+#             product_net = product_net * (1 + actual_serie[i] / 1000)
+            
+#             # my net worth move with actual change if bought in
+#             if bought_in:
+#                 my_net = my_net * (1 + actual_serie[i] / 1000)
+            
+#             product_net_serie.append(product_net)
+#             my_net_serie.append(my_net)
+            
         for i in range(len(actual_serie)):
-            # If predict growth, buy in
-            bought_in = True if predicted_serie[i] > 0 else False
+            pred_high = 1 + (predict_serie[i,0].item() / 1000)
+            pred_low = 1 + (predict_serie[i,1].item() / 1000)
+            pred_close = 1 + (predict_serie[i,2].item() / 1000)
+            actual_high = 1 + (actual_serie[i,0].item() / 1000)
+            actual_low = 1 + (actual_serie[i,1].item() / 1000)
+            actual_close = 1 + (actual_serie[i,2].item() / 1000)
             
             # Update equity net worth
-            product_net = product_net * (1 + actual_serie[i] / 1000)
+            product_net = product_net * actual_close
             
-            # my net worth move with actual change if bought in
-            if bought_in:
-                my_net = my_net * (1 + actual_serie[i] / 1000)
-            
+            if not bought_in:
+                # Limit buy at predicted low price, execute if actual low price falls below
+                if actual_low < pred_low:
+                    my_net *= (actual_close / pred_low)
+                    bought_in = True
+            else:
+                # Limit sell at predicted high price, execute if actual high price rises above
+                if actual_high > pred_high:
+                    my_net *= pred_high
+                    bought_in = False
+
             product_net_serie.append(product_net)
             my_net_serie.append(my_net)
             
-        product_net_change = product_net - 100
-        my_net_change = my_net - 100
 
-        print("Product net change (throughout the period): {:.2f}%".format(product_net_change))
-        print("My net change (trading by predicting at every time step): {:.2f}%".format(my_net_change))
+        print("Product net worth (throughout the period): {:.2f}%".format(product_net))
+        print("My net worth (trading by predicting at every time step): {:.2f}%".format(my_net))
         print()
         
         fileutils.make_plot([product_net_serie, my_net_serie],

@@ -74,10 +74,10 @@ def get_dataloader_from_tensor(config, X, y, shuffle=False):
 
 # Get train, validation and test dataloaders from file path
 def get_dataloaders(config, rand_seed, test_set_start_i=-1):
-    X_file_path = config["dataset"]["X_file_path"]
-    y_file_path = config["dataset"]["y_file_path"]
-    test_set_percentage = config["dataset"]["test_set_percentage"]
-    val_set_percentage = config["dataset"]["val_set_percentage"]
+    X_file_path = config["data"]["X_file_path"]
+    y_file_path = config["data"]["y_file_path"]
+    test_set_percentage = config["data"]["test_set_percentage"]
+    val_set_percentage = config["data"]["val_set_percentage"]
     batch_size = config["training"]["batch_size"]
 
     random.seed(rand_seed)

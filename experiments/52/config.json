@@ -1,33 +1,34 @@
 {
     "name": "config1",
-    "dataset": {
-        "X_file_path": "./data/X.pt",
-        "y_file_path": "./data/y.pt",
+    "data": {
         "begin_timestamp": 1451606420,
         "time_interval": 3600,
+        "input_serie_len": 24,
+        "output_serie_len": 1,
+        "test_set_start_index": 16000,
         "test_set_percentage": 0.1,
         "val_set_percentage": 0.15,
-        "test_set_start_index": 16000
+        "X_file_path": "./data/X.pt",
+        "y_file_path": "./data/y.pt"
     },
     "model": {
         "name": "LSTMNetV2",
-        "input_size": 1,
+        "input_feature_size": 1,
         "l1_size": 16, 
         "conv1_size": 128, 
         "lstm_size": 400, 
         "num_lstm_layers": 2,
         "l2_size": 64, 
-        "len_encode_serie": 24,
-        "len_decode_serie": 1,
+        "output_feature_size": 1,
         "dropout_rate": 0.4
     },
     "training": {
         "num_folds": 1,
-        "num_epochs": 100,
+        "num_epochs": 90,
         "batch_size": 32,
-        "learning_rate": 0.00001,
+        "learning_rate": 0.00002,
         "overfit_limit": 30,
-        "weight_decay": 0.0000001
+        "weight_decay": 0.000001
     },
     "experiment": {
         "save_period": 15

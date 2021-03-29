@@ -51,17 +51,22 @@ if __name__ == "__main__":
     
     
     # Prep data
-    X = make_input(config["dataset"]["time_interval"], config["model"]["len_encode_serie"], config["model"]["len_decode_serie"], DATA_FILE_PATH)
+    X, y, predict_serie = make_input(config["data"]["time_interval"], 
+                   config["model"]["input_feature_size"], 
+                   config["model"]["output_feature_size"], 
+                   config["data"]["input_serie_len"], 
+                   config["data"]["output_serie_len"])
     
     # Prep network
     trainer = NeuralNetTrainer(config_file_path, experiment_dir_path)
 
     if mode == 't':
-        pass
-#         dataloader = dataset.get_dataloader_from_tensor(config, X, y)
-#         trainer.test_dataloader = dataloader
-#         trainer.test("_test")
+        dataloader = dataset.get_dataloader_from_tensor(config, X, y)
+        trainer.test_dataloader = dataloader
+        trainer.test("_test")
     elif mode == 'p':
-        prediction = trainer.single_predict(X)
-        print("Predicted rate of change at next time step: {:.3f}%".format(prediction / 10))
+        prediction = trainer.single_predict(predict_serie)
+        print("Predicted High: {:.3f}%".format(prediction[0] / 10 + 100))
+        print("Predicted Low: {:.3f}%".format(prediction[1] / 10 + 100))
+        print("Predicted ROC of closing price: {:.3f}%".format(prediction[2] / 10 + 100))
         
