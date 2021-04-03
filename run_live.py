@@ -70,7 +70,7 @@ if __name__ == "__main__":
         print("Last timestamp:", str(int(last_timestamp)))
         print("\tIn PST:", datetime.utcfromtimestamp(last_timestamp - 25200).strftime('%Y-%m-%d %H:%M:%S'))
         print("Last close @ {:.3f} USD".format( last_close ))
-        print("Limit sell @ {:.3f} USD".format( last_close * (prediction[0] / 1000 + 1) ))
-        print("Limit buy @ {:.3f} USD".format( last_close * (prediction[1] / 1000 + 1) ))
-        print("Predicted ROC (do not trust): {:.3f} USD".format( last_close * (prediction[2] / 1000 + 1) ))
+        #print("Limit sell @ {:.3f} USD".format( last_close * (prediction[0] / 1000 + 1) ))
+        #print("Limit buy @ {:.3f} USD".format( last_close * (prediction[1] / 1000 + 1) ))
+        print("Predicted close: {:.3f} USD".format( last_close * (prediction[0] / 1000 + 1) ))
         

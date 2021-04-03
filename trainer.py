@@ -215,9 +215,10 @@ class NeuralNetTrainer:
         test_loss = 0
         
         num_features = self.config["model"]["output_feature_size"]
+        output_serie_len = self.config["data"]["output_serie_len"]
 
-        actual_serie = torch.empty((len(self.test_dataloader.dataset), num_features))
-        predicted_serie = torch.empty((len(self.test_dataloader.dataset), num_features))
+        actual_serie = torch.empty((len(self.test_dataloader.dataset) * output_serie_len, num_features))
+        predicted_serie = torch.empty((len(self.test_dataloader.dataset) * output_serie_len, num_features))
         i = 0
 
         with torch.no_grad():
@@ -226,7 +227,7 @@ class NeuralNetTrainer:
                     X = X.cuda()
                     y = y.cuda()
                 
-                predictions = self.best_net(X)
+                predictions = self.best_net(X, y)
                 loss = self.criterion(predictions, y)
 
                 # Append test loss of each data point in order
@@ -238,9 +239,9 @@ class NeuralNetTrainer:
 #                     actual_serie.append(y[j, -1].item())
 #                     predicted_serie.append(predictions[j, -1].item())
                 for j in range(y.shape[0]):
-                    actual_serie[i] = y[j]
-                    predicted_serie[i] = predictions[j]
-                    i += 1
+                    actual_serie[i:i+output_serie_len] = y[j]
+                    predicted_serie[i:i+output_serie_len] = predictions[j]
+                    i += output_serie_len
 
                 test_loss += loss.item()
             
@@ -290,44 +291,49 @@ class NeuralNetTrainer:
         
         bought_in = False
         
-#         for i in range(len(actual_serie)):
-#             # If predict growth, buy in
-#             bought_in = True if predicted_serie[i] > 0 else False
-            
-#             # Update equity net worth
-#             product_net = product_net * (1 + actual_serie[i] / 1000)
-            
-#             # my net worth move with actual change if bought in
-#             if bought_in:
-#                 my_net = my_net * (1 + actual_serie[i] / 1000)
-            
-#             product_net_serie.append(product_net)
-#             my_net_serie.append(my_net)
-            
         for i in range(len(actual_serie)):
-            pred_high = 1 + (predict_serie[i,0].item() / 1000)
-            pred_low = 1 + (predict_serie[i,1].item() / 1000)
-            pred_close = 1 + (predict_serie[i,2].item() / 1000)
-            actual_high = 1 + (actual_serie[i,0].item() / 1000)
-            actual_low = 1 + (actual_serie[i,1].item() / 1000)
-            actual_close = 1 + (actual_serie[i,2].item() / 1000)
+            # If predict growth, buy in
+            bought_in = True if predict_serie[i,-1] > 0 else False
             
             # Update equity net worth
-            product_net = product_net * actual_close
+            product_net = product_net * (1 + actual_serie[i,-1] / 1000)
             
-            if not bought_in:
-                # Limit buy at predicted low price, execute if actual low price falls below
-                if actual_low < pred_low:
-                    my_net *= (actual_close / pred_low)
-                    bought_in = True
-            else:
-                # Limit sell at predicted high price, execute if actual high price rises above
-                if actual_high > pred_high:
-                    my_net *= pred_high
-                    bought_in = False
-
+            # my net worth move with actual change if bought in
+            if bought_in:
+                my_net = my_net * (1 + actual_serie[i,-1] / 1000)
+            
             product_net_serie.append(product_net)
             my_net_serie.append(my_net)
+            
+#         for i in range(len(actual_serie)):
+#             pred_high = 1 + (predict_serie[i,0].item() / 1000)
+#             pred_low = 1 + (predict_serie[i,1].item() / 1000)
+#             pred_close = 1 + (predict_serie[i,2].item() / 1000)
+#             actual_high = 1 + (actual_serie[i,0].item() / 1000)
+#             actual_low = 1 + (actual_serie[i,1].item() / 1000)
+#             actual_close = 1 + (actual_serie[i,2].item() / 1000)
+            
+# #             pred_high *= 0.99999
+# #             pred_low *= 1.00001
+            
+#             # Update equity net worth
+#             product_net = product_net * actual_close
+            
+#             if not bought_in:
+#                 # Limit buy at predicted low price, execute if actual low price falls below
+#                 if actual_low < pred_low:
+#                     my_net *= (actual_close / pred_low)
+#                     bought_in = True
+#             else:
+#                 # Limit sell at predicted high price, execute if actual high price rises above
+#                 if actual_high > pred_high:
+#                     my_net *= pred_high
+#                     bought_in = False
+#                 else:
+#                     my_net *= actual_close
+
+#             product_net_serie.append(product_net)
+#             my_net_serie.append(my_net)
             
 
         print("Product net worth (throughout the period): {:.2f}%".format(product_net))

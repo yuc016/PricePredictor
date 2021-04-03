@@ -16,12 +16,16 @@ class LSTMNetV1(nn.Module):
         
     # input_series - (Batch size x serie length x feature size)
     # output_series - (Batch size x serie length x feature size)
-    def forward(self, input_series, debug_print=False):
-        x = input_series
+    def forward(self, input_series, output_series, debug_print=False):
+        decode_serie_len = output_series.shape[1]
+        if decode_serie_len > 1:
+            x = torch.cat([input_series, output_series], dim=1)
+        else:
+            x = input_series
 #         print(x.shape)
         x, _ = self.lstm(x)
         # print(x.shape)
-        x = x[:, -1:, :]
+        x = x[:, -decode_serie_len:, :]
         # print(x.shape)
         output_series = self.lin2(x)
         # print(x.shape)
@@ -47,25 +51,25 @@ class LSTMNetV2(nn.Module):
             nn.Dropout(dropout_rate),
             nn.ReLU(),
             nn.Linear(lstm_size, l2_size),
-            nn.Dropout(dropout_rate),
+            nn.Dropout(dropout_rate * 0.5),
             nn.ReLU(),
             nn.Linear(l2_size, output_feature_size)
         )
         
-    # input_series - (Batch size x serie length x feature size)
+    # input_series - (Batch size x serie length x feature size), [X, y]
     # output_series - (Batch size x serie length x feature size)
     def forward(self, input_series, debug_print=False):
         x = input_series
-        # print(x.shape)
+#         print(x.shape)
         x = self.conv1d(x.permute(0,2,1)).permute(0,2,1)
-        # print(x.shape)
+#         print(x.shape)
         x, _ = self.lstm(x)
-        # print(x.shape)
+#         print(x.shape)
         x = x[:, -1:, :]
-        # print(x.shape)
+#         print(x.shape)
         output_series = self.lin2(x)
-        # print(x.shape)
-        # exit()
+#         print(x.shape)
+#         exit()
         return output_series
     
 

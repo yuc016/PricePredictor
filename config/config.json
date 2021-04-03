@@ -1,13 +1,13 @@
 {
     "name": "config1",
     "data": {
-        "begin_timestamp": 1483257600,
+        "begin_timestamp": 1451606420,
         "time_interval": 900,
-        "input_serie_len": 48,
+        "input_serie_len": 96,
         "output_serie_len": 1,
-        "test_set_start_index": 126000,
-        "test_set_percentage": 0.1,
-        "val_set_percentage": 0.15,
+        "test_set_start_index": 156000,
+        "test_set_percentage": 0.01,
+        "val_set_percentage": 0.13,
         "X_file_path": "./data/X.pt",
         "y_file_path": "./data/y.pt"
     },
@@ -16,17 +16,17 @@
         "input_feature_size": 4,
         "l1_size": 16, 
         "conv1_size": 128, 
-        "lstm_size": 400, 
+        "lstm_size": 600, 
         "num_lstm_layers": 2,
-        "l2_size": 64, 
-        "output_feature_size": 3,
-        "dropout_rate": 0.4
+        "l2_size": 128, 
+        "output_feature_size": 1,
+        "dropout_rate": 0.5
     },
     "training": {
         "num_folds": 1,
-        "num_epochs": 50,
+        "num_epochs": 200,
         "batch_size": 32,
-        "learning_rate": 0.0000005,
+        "learning_rate": 0.00001,
         "overfit_limit": 50,
         "weight_decay": 0.00000001
     },

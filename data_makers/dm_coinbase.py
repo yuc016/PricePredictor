@@ -30,6 +30,7 @@ def fetch_data(time_interval):
 def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_length, decode_length):
     # Convert to panda dataframe
     time_series_df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
+    print(time_series_df)
     
     # Assert that no timestep is missing
     time_stamps = time_series_df["time"]
@@ -110,7 +111,8 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
     assert(torch.sum(high_low_price != high_low_price) == 0)
     
     data_in = candle_stats
-    data_out = torch.cat([high_low_price, closing_price_roc], dim=1)
+    data_out = closing_price_roc
+#     data_out = torch.cat([high_low_price, closing_price_roc], dim=1)
     
     assert(data_in.shape[1] == input_size)
     assert(data_out.shape[1] == output_size)

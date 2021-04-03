@@ -1,0 +1,43 @@
+config instruction
+
+{
+    "name": "config1",
+    "data": {
+        "begin_timestamp": 1483257600,    # Begin unix timestep for truncating the data
+        "time_interval": 900,             # Time interval between each timestep in seconds
+        "input_serie_len": 48,            # Length of the input serie
+        "output_serie_len": 1,            # Length of the output serie
+        "test_set_start_index": 126000,   # Start timestep for the test set
+        "test_set_percentage": 0.1,       # Percentage of data used as test data
+        "val_set_percentage": 0.15,       # Percentage of data used as validation data
+        "X_file_path": "./data/X.pt",     # Input data file path
+        "y_file_path": "./data/y.pt"      # Output data file path
+    },
+    "model": {
+        "name": "LSTMNetV2",              
+        "input_feature_size": 4,          # Number of features in input data
+        "l1_size": 16,                    # First linear layer output feature size
+        "conv1_size": 128,                # Convolution layer output feature size
+        "lstm_size": 400,                 # LSTM layer output feature size
+        "num_lstm_layers": 2,             # Number of LSTM layer stacked 
+        "l2_size": 64,                    # Second linear layer output feature size
+        "output_feature_size": 3,         # Number of features in output data
+        "dropout_rate": 0.4               # Dropout rate for regularization
+    },
+    "training": {
+        "num_folds": 1,                   # Not in use
+        "num_epochs": 50,                 # Number of training iterations
+        "batch_size": 32,                 # Batch size
+        "learning_rate": 0.0000005,       # Learning rate
+        "overfit_limit": 50,              # Number of iterations tolerated without reaching new min validation loss
+        "weight_decay": 0.00000001        # Weight decay for regularization
+    },
+    "experiment": {
+        "save_period": 5                  # Save every save_period iterations
+    },
+    "testing": {
+        "test_trade_start": -1,
+        "test_trade_end": -1,
+        "test_regression_sample_len": 50
+    }
+}
