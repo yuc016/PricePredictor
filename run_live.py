@@ -10,8 +10,9 @@ from trainer import NeuralNetTrainer
 
 ####
 # Customizable data maker and data destination
-from data_makers.dm_coinbase import make_input
-DATA_FILE_PATH = "data/live/coinbase/data.csv"
+from data_makers.dm_robinhood import make_input
+
+# from data_makers.dm_coinbase import make_input
 
 # from data_makers.dm_cointelegraph import make_data
 # DATA_FILE_PATH = "data/live/cointelegraph/amCharts.csv"
@@ -21,49 +22,27 @@ DATA_FILE_PATH = "data/live/coinbase/data.csv"
 EXP_ROOT_DIR = "experiments"
 
 
-if __name__ == "__main__":
-    print()
-    config_file_path = None
-    experiment_dir_path = None
-
-    # Must provide an experiment directory
-    if len(sys.argv) < 3:
-        raise Exception("Usage: python main.py <MODE> <experiment_name>\n" +
-                        "\tMode: use t for full time serie model testing, p for single timestep predicting")
-
-    mode = sys.argv[1]
-    if mode not in ['t', 'p']:
-        raise Exception("Mode not supported")
+def run_live(config_file_path, experiment_dir_path, mode, logged_in=False):
     
-    experiment_name = sys.argv[2]
-    experiment_dir_path = os.path.join(EXP_ROOT_DIR, experiment_name)
-
-    # Check experiment exists
-    if not os.path.exists(experiment_dir_path):
-        raise Exception(experiment_dir_path, " doesn't exist:")
-    
-    # Check config file exists
-    config_file_path = os.path.join(experiment_dir_path, "config.json")
-    if not os.path.isfile(config_file_path):
-        raise Exception("config.json doesn't exist:")
-
     config = fileutils.get_config_from_file(config_file_path)
-    
     
     # Prep data
     X, y, predict_serie, last_timestamp, last_close = make_input(config["data"]["time_interval"], 
                    config["model"]["input_feature_size"], 
                    config["model"]["output_feature_size"], 
                    config["data"]["input_serie_len"], 
-                   config["data"]["output_serie_len"])
+                   config["data"]["output_serie_len"], logged_in)
+    
+    last_close = last_close.item()
 
     # Prep network
-    trainer = NeuralNetTrainer(config_file_path, experiment_dir_path)
+    trainer = NeuralNetTrainer(config_file_path, experiment_dir_path, print_info=False)
 
     if mode == 't':
         dataloader = dataset.get_dataloader_from_tensor(config, X, y)
         trainer.test_dataloader = dataloader
         trainer.test("_test")
+        return None
     elif mode == 'p':
         prediction = trainer.single_predict(predict_serie)
         print("AI prediction output:", prediction)
@@ -72,5 +51,34 @@ if __name__ == "__main__":
         print("Last close @ {:.3f} USD".format( last_close ))
         #print("Limit sell @ {:.3f} USD".format( last_close * (prediction[0] / 1000 + 1) ))
         #print("Limit buy @ {:.3f} USD".format( last_close * (prediction[1] / 1000 + 1) ))
-        print("Predicted close: {:.3f} USD".format( last_close * (prediction[0] / 1000 + 1) ))
+        predicted_close = last_close * (prediction[0] / 1000 + 1)
+        print("Predicted close: {:.3f} USD".format(predicted_close))
+        return last_close, predicted_close, prediction[0]
+
+    
+if __name__ == "__main__":
+    print()
+    config_file_path = None
+    experiment_dir_path = None
+
+    # Must provide an experiment directory
+    if len(sys.argv) < 3:
+        raise Exception("Usage: python run_live.py <MODE> <experiment_name>\n" +
+                        "\tMode: use t for full time serie model testing, p for single timestep predicting")
+
+    mode = sys.argv[1]
+    if mode not in ['t', 'p']:
+        raise Exception("Mode not supported")
+    
+    # Check experiment exists
+    experiment_name = sys.argv[2]
+    experiment_dir_path = os.path.join(EXP_ROOT_DIR, experiment_name)
+    if not os.path.exists(experiment_dir_path):
+        raise Exception(experiment_dir_path, " doesn't exist:")
+    
+    # Check config file exists
+    config_file_path = os.path.join(experiment_dir_path, "config.json")
+    if not os.path.isfile(config_file_path):
+        raise Exception("config.json doesn't exist:")
         
+    run_live(config_file_path, experiment_dir_path, mode)

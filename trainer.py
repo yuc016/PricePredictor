@@ -9,7 +9,7 @@ from math import sqrt
 
 
 class NeuralNetTrainer:
-    def __init__(self, config_file_path, experiment_dir_path, cuda=True, print_info=True):
+    def __init__(self, config_file_path, experiment_dir_path, print_info=True):
 
         self.config = fileutils.get_config_from_file(config_file_path)
         
@@ -32,7 +32,10 @@ class NeuralNetTrainer:
         self.val_dataloader = None
         self.test_dataloader = None
         
-        self.cuda = cuda
+        self.cuda = False
+        if torch.cuda.is_available():
+            self.cuda = True
+            
         self.print_info = print_info
 
         self.init_experiment(self.config)
@@ -80,11 +83,14 @@ class NeuralNetTrainer:
             print("Current epoch:", self.epoch)
             print("Best validation loss:", self.best_score)
             print()
+            
+        self.net = self.net.float()
+        self.best_net = self.best_net.float()
 
         # Use GPU for training
-        if self.cuda and torch.cuda.is_available():
-            self.net = self.net.cuda().float()
-            self.best_net = self.best_net.cuda().float()
+        if self.cuda:
+            self.net = self.net.cuda()
+            self.best_net = self.best_net.cuda()
             self.criterion = self.criterion.cuda()
 
     def load_data_for_training(self):

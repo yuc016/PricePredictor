@@ -1,7 +1,6 @@
 import requests
 import time
 
-import csv
 import pandas as pd
 import torch
 
@@ -11,8 +10,8 @@ def make_input(time_interval, input_size, output_size, encode_length, decode_len
 
 
 def fetch_data(time_interval):
-    raw_data = requests.get('https://api.pro.coinbase.com/products/BTC-USD/candles?granularity=' + str(time_interval), headers={'Cache-Control': 'no-cache'}).content.decode("utf-8") 
-#     raw_data = requests.get('https://api.pro.coinbase.com/products/BTC-USD/candles?granularity=300', headers={'Cache-Control': 'no-cache'}).content.decode("utf-8") 
+#     raw_data = requests.get('https://api.pro.coinbase.com/products/BTC-USD/candles?granularity=' + str(time_interval), headers={'Cache-Control': 'no-cache'}).content.decode("utf-8") 
+    raw_data = requests.get('https://api.pro.coinbase.com/products/BTC-USD/candles?granularity=300', headers={'Cache-Control': 'no-cache'}).content.decode("utf-8") 
         
     raw_data = raw_data.replace('[[', '')
     raw_data = raw_data.replace(']]', '')
@@ -36,8 +35,8 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
     time_stamps = time_series_df["time"]
     time_stamps = time_stamps.astype(float).values
     for i in range(len(time_stamps) - 1):
-#         assert(time_stamps[i] + 300 == time_stamps[i+1])
-        assert(time_stamps[i] + time_interval == time_stamps[i+1])
+        assert(time_stamps[i] + 300 == time_stamps[i+1])
+#         assert(time_stamps[i] + time_interval == time_stamps[i+1])
         
    # Make time serie tensor
     columns = ["time", "open", "high", "low", "close", "volume"]
@@ -57,22 +56,16 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
     last_close = time_series_tensor[-1, col_i["close"]]
     
     
-    closing_price_roc = (time_series_tensor[1:, col_i["close"]] - time_series_tensor[:-1, col_i["close"]]) / time_series_tensor[:-1, col_i["close"]] * 1000
-    closing_price_roc = closing_price_roc.reshape(-1,1)
-    
-    candle_stats = (time_series_tensor[1:, col_i["open"]:col_i["volume"]] / time_series_tensor[:-1, col_i["close"]].reshape(-1,1) - 1) * 1000
-    
-    high_low_price = candle_stats[:, 1:3]
     
     # Summarize data by each TIME_INTERVAL, use Volume Weighted Average Price (VWAP)
-#     step_size = time_interval // 300 # Number of data to aggregate into one model's timestep
-#     shape = (time_series_tensor.shape[0] // step_size, input_size)
-#     condensed_data_tensor = torch.empty(shape)
-
-#     count = 0
-#     j = 0
-#     i = 0
-#     while i <= time_series_tensor.shape[0] - step_size:
+    step_size = time_interval // 300 # Number of data to aggregate into one model's timestep
+    shape = (time_series_tensor.shape[0] // step_size, len(columns))
+    condensed_data_tensor = torch.empty(shape)
+    
+    count = 0
+    j = 0
+    i = time_series_tensor.shape[0] % step_size
+    while i <= time_series_tensor.shape[0] - step_size:
 #         # Approximate trade price of all trades by averaging open and close price of the interval
 #         avg = (time_series_tensor[i:i+step_size, col_i["open"]] + time_series_tensor[i:i+step_size, col_i["close"]]) / 2
         
@@ -81,20 +74,23 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
 #         total_volume = torch.sum(time_series_tensor[i:i+step_size, col_i["volume"]])
 #         wvap = volume_weighted_sum / total_volume
         
-#         # Assert that there is trade in the time interval
+        # Assert that there is trade in the time interval
 #         assert(total_volume != 0)
-        
-#         if input_size == 5:
-#             condensed_data_tensor[j, col_i["open"]] = time_series_tensor[i, col_i["open"]]
-#             condensed_data_tensor[j, col_i["low"]] = torch.min(time_series_tensor[i:i+step_size, col_i["low"]])
-#             condensed_data_tensor[j, col_i["high"]] = torch.max(time_series_tensor[i:i+step_size, col_i["high"]])
-#             condensed_data_tensor[j, col_i["close"]] = time_series_tensor[i+step_size-1, col_i["close"]]
-            
 #         condensed_data_tensor[j, -1] = wvap
+        
+        condensed_data_tensor[j, col_i["time"]] = time_series_tensor[i, col_i["time"]]
+        condensed_data_tensor[j, col_i["open"]] = time_series_tensor[i, col_i["open"]]
+        condensed_data_tensor[j, col_i["low"]] = torch.min(time_series_tensor[i:i+step_size, col_i["low"]])
+        condensed_data_tensor[j, col_i["high"]] = torch.max(time_series_tensor[i:i+step_size, col_i["high"]])
+        condensed_data_tensor[j, col_i["close"]] = time_series_tensor[i+step_size-1, col_i["close"]]
+        condensed_data_tensor[j, col_i["volume"]] = time_series_tensor[i, col_i["volume"]]
 
-#         i += step_size
-#         j += 1
 
+        i += step_size
+        j += 1
+    
+    time_series_tensor = condensed_data_tensor
+    
 #     mini = torch.min(condensed_data_tensor).item()
 #     maxi = torch.max(condensed_data_tensor).item()
 #     mean = torch.mean(condensed_data_tensor).item()
@@ -103,6 +99,15 @@ def get_input_tensor(raw_data, time_interval, input_size, output_size, encode_le
 #     print("\tMin ", mini)
 #     print("\tMean ", mean)
 #     print()
+    
+    
+    
+    closing_price_roc = (time_series_tensor[1:, col_i["close"]] - time_series_tensor[:-1, col_i["close"]]) / time_series_tensor[:-1, col_i["close"]] * 1000
+    closing_price_roc = closing_price_roc.reshape(-1,1)
+    
+    candle_stats = (time_series_tensor[1:, col_i["open"]:col_i["volume"]] / time_series_tensor[:-1, col_i["close"]].reshape(-1,1) - 1) * 1000
+    
+    high_low_price = candle_stats[:, 1:3]
 
 
     # Check for nans
