@@ -10,7 +10,7 @@ def make_input(time_interval, input_size, output_size, encode_length, decode_len
     if not logged_in:
         r.login(username='chenyyo0o0o@gmail.com')
     
-    json_data = r.get_crypto_historicals('btc', '10minute', 'week')
+    json_data = r.get_crypto_historicals('BTC', '10minute', 'week')
     
     if not logged_in:
         r.logout()

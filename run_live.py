@@ -45,7 +45,7 @@ def run_live(config_file_path, experiment_dir_path, mode, logged_in=False):
         return None
     elif mode == 'p':
         prediction = trainer.single_predict(predict_serie)
-        print("AI prediction output:", prediction)
+#         print("AI prediction output:", prediction)
         print("Last timestamp:", str(int(last_timestamp)))
         print("\tIn PST:", datetime.utcfromtimestamp(last_timestamp - 25200).strftime('%Y-%m-%d %H:%M:%S'))
         print("Last close @ {:.3f} USD".format( last_close ))

@@ -50,6 +50,9 @@ class NeuralNetTrainer:
         output_feature_size = config["model"]["output_feature_size"]
         l1_size = config["model"]["l1_size"]
         conv1_size = config["model"]["conv1_size"]
+        conv1_kernel_size = config["model"]["conv1_kernel_size"]
+        conv2_size = config["model"]["conv2_size"]
+        conv2_kernel_size = config["model"]["conv2_kernel_size"]
         l2_size = config["model"]["l2_size"]
         lstm_size = config["model"]["lstm_size"]
         num_lstm_layers = config["model"]["num_lstm_layers"]
@@ -61,9 +64,15 @@ class NeuralNetTrainer:
         if model_name == "LSTMNetV1":
             self.net = model.LSTMNetV1(input_feature_size, lstm_size, num_lstm_layers, output_feature_size, dropout_rate)
         elif model_name == "LSTMNetV2":
-            self.net = model.LSTMNetV2(input_feature_size, conv1_size, lstm_size, num_lstm_layers, l2_size, output_feature_size, dropout_rate)
+            self.net = model.LSTMNetV2(input_feature_size, conv1_size, conv1_kernel_size, 
+                                        lstm_size, num_lstm_layers, l2_size, output_feature_size, dropout_rate)
         elif model_name == "LSTMNetV3":
-            self.net = model.LSTMNetV3(input_feature_size, l1_size, conv1_size, lstm_size, num_lstm_layers, l2_size, output_feature_size, dropout_rate)
+            self.net = model.LSTMNetV3(input_feature_size, l1_size, conv1_size, lstm_size, 
+                                        num_lstm_layers, l2_size, output_feature_size, dropout_rate)
+        elif model_name == "LSTMNetV4":
+            self.net = model.LSTMNetV4(input_feature_size, conv1_size, conv1_kernel_size, 
+                                        conv2_size, conv2_kernel_size, lstm_size, num_lstm_layers, 
+                                        l2_size, output_feature_size, dropout_rate)
         else:
             raise("Unknown model name", model_name)
             

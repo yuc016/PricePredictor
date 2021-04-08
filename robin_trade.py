@@ -11,6 +11,7 @@ SYMBOL = 'BTC'
 TIME_INTERVAL = 600
 BUY_THRESH = 0
 ACCOUNT = 'chenyyo0o0o@gmail.com'
+CANCEL_BUFFER = 5
 
 def sigint_exit(sig, frame):
     print('Logging out..')
@@ -22,39 +23,58 @@ def sigint_exit(sig, frame):
 
 def trade_loop(config_file_path, experiment_dir_path):
     while True:
+        now = int(time.time())
         # wait until next time step
-        while int(time.time()) % TIME_INTERVAL != 0:
-            # Cancel pending order 10 or 9 seconds before next time step
-            if (int(time.time()) + 10) % TIME_INTERVAL == 0 or (int(time.time()) + 9) % TIME_INTERVAL == 0:
-                print("\n\n\nCancelling pending orders")
-                r.cancel_all_crypto_orders()
-                time.sleep(3)
-            time.sleep(0.8)
-#             print("wait")
+        while (now + CANCEL_BUFFER) % (TIME_INTERVAL // 3) != 0:
+            time.sleep(0.5)
+            now = int(time.time())
+            
+        print("\n\n\n")
 
-        # Wait 2 seconds to let server update
-        time.sleep(2)
+        new_timestep = (now + CANCEL_BUFFER) % TIME_INTERVAL == 0
+        if new_timestep:
+            print("New timestep")
+            
+        # Cancel pending order
+        print("Cancelling pending orders")
+        r.cancel_all_crypto_orders()
+
+        # Wait until server updates new data
+        time.sleep(CANCEL_BUFFER)
 
         last_close, predicted_close, predicted_roc = run_live(config_file_path, experiment_dir_path, mode='p', logged_in=True)
         print("Predicted ROC:", predicted_roc)
         
         if predicted_roc > BUY_THRESH:
             capital = float(r.load_phoenix_account('crypto_buying_power')['amount'])
+            
             mark_price = float(r.get_crypto_quote(SYMBOL, 'mark_price'))
             print("Mark price: ", mark_price)
-            limit_price = min(last_close, mark_price)
+            
+            if new_timestep:
+                limit_price = min(last_close, mark_price)
+            else:
+                limit_price = mark_price
             print("Buy limit price:", limit_price)
+            
             r.order_buy_crypto_limit_by_price(SYMBOL, capital, limit_price)
         else:
             quantity_held = r.get_crypto_quantity_held(SYMBOL)
+            
             mark_price = float(r.get_crypto_quote(SYMBOL, 'mark_price'))
             print("Mark price: ", mark_price)
-            limit_price = max(last_close, mark_price)
+            
+            if new_timestep:
+                limit_price = max(last_close, mark_price)
+            else:
+                limit_price = mark_price
             print("Sell limit price:", limit_price)
+            
             r.order_sell_crypto_limit(SYMBOL, quantity_held, limit_price)
 
         print("Action complete!")
 
+        
 if __name__ == "__main__":
     print()
     config_file_path = None
@@ -75,7 +95,7 @@ if __name__ == "__main__":
     if not os.path.isfile(config_file_path):
         raise Exception("config.json doesn't exist:")
         
-    r.login(username=ACCOUNT, expiresIn=86400)
+    r.login(username=ACCOUNT, expiresIn=172800)
     print('Logged in')
     
     # Register signal interrupt behavior: log out
