@@ -85,3 +85,11 @@ def make_plot(data, labels, x_axis_name, plot_name, file_name, dir_path):
     path = os.path.join(dir_path, file_name)
     plt.savefig(path)
     plt.close()
+
+
+def write_experiment_result(experiment_dir_path, test_loss, product_net, my_net, trend_pred_accuracy):
+    with open(os.path.join(experiment_dir_path, "result.txt"), 'w') as result_file:
+        result_file.write("Test loss: {:.4f}\n".format(test_loss))
+        result_file.write("Product net worth (throughout the period): {:.2f}%\n".format(product_net))
+        result_file.write("My net worth (trading by predicting at every time step): {:.2f}%\n".format(my_net))
+        result_file.write("Trend predicting accuracy: {:.4f}%\n".format(trend_pred_accuracy*100))

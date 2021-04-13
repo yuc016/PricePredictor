@@ -1,0 +1,20 @@
+#!/bin/bash
+python main.py 9
+python main.py 10
+python main.py 11
+python main.py 12
+python main.py 13
+python main.py 14
+python main.py 15
+python main.py 16
+python main.py 17
+python main.py 18
+python main.py 19
+python main.py 20
+python main.py 21
+python main.py 22
+python main.py 23
+python main.py 24
+python main.py 25
+python main.py 26
+python main.py 27

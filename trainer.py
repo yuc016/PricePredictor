@@ -2,10 +2,10 @@ import torch
 import random
 import copy
 import fileutils
-import model
 import dataset
+import model_factory
 
-from math import sqrt
+from math import sqrt, exp
 
 
 class NeuralNetTrainer:
@@ -43,39 +43,10 @@ class NeuralNetTrainer:
     # Initialize net, optimizer, criterion and stats
     def init_experiment(self, config):
         
-        model_name = config["model"]["name"]
-        input_serie_len = config["data"]["input_serie_len"]
-        output_serie_len = config["data"]["output_serie_len"]
-        input_feature_size = config["model"]["input_feature_size"]
-        output_feature_size = config["model"]["output_feature_size"]
-        l1_size = config["model"]["l1_size"]
-        conv1_size = config["model"]["conv1_size"]
-        conv1_kernel_size = config["model"]["conv1_kernel_size"]
-        conv2_size = config["model"]["conv2_size"]
-        conv2_kernel_size = config["model"]["conv2_kernel_size"]
-        l2_size = config["model"]["l2_size"]
-        lstm_size = config["model"]["lstm_size"]
-        num_lstm_layers = config["model"]["num_lstm_layers"]
-        dropout_rate = config["model"]["dropout_rate"]
-
         learning_rate = config["training"]["learning_rate"]
         weight_decay = config["training"]["weight_decay"]
         
-        if model_name == "LSTMNetV1":
-            self.net = model.LSTMNetV1(input_feature_size, lstm_size, num_lstm_layers, output_feature_size, dropout_rate)
-        elif model_name == "LSTMNetV2":
-            self.net = model.LSTMNetV2(input_feature_size, conv1_size, conv1_kernel_size, 
-                                        lstm_size, num_lstm_layers, l2_size, output_feature_size, dropout_rate)
-        elif model_name == "LSTMNetV3":
-            self.net = model.LSTMNetV3(input_feature_size, l1_size, conv1_size, lstm_size, 
-                                        num_lstm_layers, l2_size, output_feature_size, dropout_rate)
-        elif model_name == "LSTMNetV4":
-            self.net = model.LSTMNetV4(input_feature_size, conv1_size, conv1_kernel_size, 
-                                        conv2_size, conv2_kernel_size, lstm_size, num_lstm_layers, 
-                                        l2_size, output_feature_size, dropout_rate)
-        else:
-            raise("Unknown model name", model_name)
-            
+        self.net = model_factory.build_model(config)
         self.best_net = copy.deepcopy(self.net)
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate, weight_decay=weight_decay, eps=0)
         self.criterion = torch.nn.MSELoss(reduction="sum")
@@ -101,6 +72,7 @@ class NeuralNetTrainer:
             self.net = self.net.cuda()
             self.best_net = self.best_net.cuda()
             self.criterion = self.criterion.cuda()
+
 
     def load_data_for_training(self):
         test_set_start_index = self.config["data"]["test_set_start_index"]
@@ -264,7 +236,6 @@ class NeuralNetTrainer:
                 
         # Average by data points and data serie length, take square root to get RMSD from MSE
         test_loss = sqrt(test_loss / len(self.test_dataloader.dataset) / y.shape[1] / y.shape[2])
-        print("Test loss:", test_loss, "\n")
                 
         # Make an actual vs prediction plot
         test_sample_len = self.config["testing"]["test_regression_sample_len"]
@@ -277,9 +248,11 @@ class NeuralNetTrainer:
                                 self.experiment_dir_path)
 
         # Do a test trade
-        self.test_trade(self.config["testing"]["test_trade_start"],
-                        self.config["testing"]["test_trade_end"],
-                        actual_serie, predicted_serie, test_name)
+        product_net, my_net, trend_pred_accuracy = self.test_trade(self.config["testing"]["test_trade_start"],
+                                                                    self.config["testing"]["test_trade_end"],
+                                                                    actual_serie, predicted_serie, test_name)
+
+        fileutils.write_experiment_result(self.experiment_dir_path, test_loss, product_net, my_net, trend_pred_accuracy)
 
 
     def single_predict(self, serie):
@@ -297,25 +270,40 @@ class NeuralNetTrainer:
         if trade_start != -1 and trade_end != -1:
             actual_serie = actual_serie[trade_start:trade_end]
             predict_serie = predict_serie[trade_start:trade_end]
-        
+            
         # Start with 100 percent
-        product_net_serie = [100]
-        my_net_serie = [100]
-        product_net = 100
-        my_net = 100
+        product_net_serie = [100.0]
+        my_net_serie = [100.0]
+        product_net = 100.0
+        my_net = 100.0
         
+        BUY_TRANSACTION_FEE_RATE = 0.0002
+        SELL_TRANSACTION_FEE_RATE = 0.0002
+        BUY_THRESH = 0
         bought_in = False
+        correct_trend_pred_ct = 0
         
         for i in range(len(actual_serie)):
-            # If predict growth, buy in
-            bought_in = True if predict_serie[i,-1] > 0 else False
-            
+            # actual_roc = (-1) ** (actual_serie[i,-1] + 0.5) * -1 * exp(actual_serie[i, 0])
+            actual_roc = actual_serie[i,-1] / 1000
+            predict_roc = predict_serie[i, -1]
+
+            if actual_roc * predict_roc > 0:
+                correct_trend_pred_ct += 1
+
             # Update equity net worth
-            product_net = product_net * (1 + actual_serie[i,-1] / 1000)
-            
-            # my net worth move with actual change if bought in
-            if bought_in:
-                my_net = my_net * (1 + actual_serie[i,-1] / 1000)
+            product_net = product_net * (1 + actual_roc)
+
+            # Buy in if predict growth
+            if predict_roc > BUY_THRESH:
+                if not bought_in:
+                    my_net = my_net * (1 - BUY_TRANSACTION_FEE_RATE) # pay transaction fee
+                    bought_in = True
+                my_net = my_net * (1 + actual_roc) # value move with the product
+            else:
+                if bought_in:
+                    my_net = my_net * (1 - SELL_TRANSACTION_FEE_RATE) # pay transaction fee
+                    bought_in = False
             
             product_net_serie.append(product_net)
             my_net_serie.append(my_net)
@@ -349,13 +337,10 @@ class NeuralNetTrainer:
 
 #             product_net_serie.append(product_net)
 #             my_net_serie.append(my_net)
-            
 
-        print("Product net worth (throughout the period): {:.2f}%".format(product_net))
-        print("My net worth (trading by predicting at every time step): {:.2f}%".format(my_net))
-        print()
-        
         fileutils.make_plot([product_net_serie, my_net_serie],
                             ["Actual Product Worth", "My Net Worth"], 
                             "Time step", "Percentage of Original Capital", 
                             "test_trade"+test_name, self.experiment_dir_path)
+        
+        return product_net, my_net, correct_trend_pred_ct / len(actual_serie)

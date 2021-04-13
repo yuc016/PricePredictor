@@ -8,10 +8,11 @@ from run_live import run_live
 
 EXP_ROOT_DIR = "experiments"
 SYMBOL = 'BTC'
-TIME_INTERVAL = 600
+TIME_INTERVAL = 60
 BUY_THRESH = 0
 ACCOUNT = 'chenyyo0o0o@gmail.com'
 CANCEL_BUFFER = 5
+TRANSACTION_FEE_RATE = 0.0001
 
 def sigint_exit(sig, frame):
     print('Logging out..')
@@ -53,11 +54,13 @@ def trade_loop(config_file_path, experiment_dir_path):
             
             if new_timestep:
                 limit_price = min(last_close, mark_price)
+                limit_price = mark_price
             else:
                 limit_price = mark_price
+            limit_price *= (1 + TRANSACTION_FEE_RATE)
             print("Buy limit price:", limit_price)
             
-            r.order_buy_crypto_limit_by_price(SYMBOL, capital, limit_price)
+            # r.order_buy_crypto_limit_by_price(SYMBOL, capital, limit_price)
         else:
             quantity_held = r.get_crypto_quantity_held(SYMBOL)
             
@@ -66,11 +69,13 @@ def trade_loop(config_file_path, experiment_dir_path):
             
             if new_timestep:
                 limit_price = max(last_close, mark_price)
+                limit_price = mark_price
             else:
                 limit_price = mark_price
+            limit_price *= (1 - TRANSACTION_FEE_RATE)
             print("Sell limit price:", limit_price)
             
-            r.order_sell_crypto_limit(SYMBOL, quantity_held, limit_price)
+            # r.order_sell_crypto_limit(SYMBOL, quantity_held, limit_price)
 
         print("Action complete!")
 

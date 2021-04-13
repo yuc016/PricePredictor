@@ -236,10 +236,22 @@ high_low_stats = candle_stats[:,1:3]
 
 # %%
 # Convert closing price to ROC
-closing_price_roc = candle_stats[:, -1]
-# closing_price_roc = (condensed_prices_tensor[1:, col_i["Close"]] - condensed_prices_tensor[:-1, col_i["Close"]]) / condensed_prices_tensor[:-1, col_i["Close"]] * 1000
-closing_price_roc = closing_price_roc.reshape(-1,1)
+# closing_price_roc = candle_stats[:, -1] + (-1) ** (candle_stats[:, -1] > 0).float() * -1e-8
+closing_price_roc = candle_stats[:, -1].reshape(-1, 1)
+
+percentile_lowest = np.percentile(closing_price_roc.numpy(), 20).item()
+percentile_lower = np.percentile(closing_price_roc.numpy(), 40).item()
+percentile_higher = np.percentile(closing_price_roc.numpy(), 60).item()
+percentile_highest = np.percentile(closing_price_roc.numpy(), 80).item()
+
+closing_price_cat = torch.empty(closing_price_roc.shape)
+closing_price_cat = (closing_price_roc <= percentile_lowest).float() * -2 + (closing_price_roc > percentile_lowest).float() * (closing_price_roc <= percentile_lower).float() * -1 + (closing_price_roc > percentile_lower).float() * (closing_price_roc <= percentile_higher).float() * 0 + (closing_price_roc > percentile_higher).float() * (closing_price_roc <= percentile_highest).float() * 1 + (closing_price_roc > percentile_highest).float() * 2
+
+# closing_price_roc_sign = (closing_price_roc > 0).float().reshape(-1, 1) - 0.5
+# closing_price_roc_mag = torch.log(torch.abs(closing_price_roc)).reshape(-1, 1)
 assert(torch.sum(closing_price_roc != closing_price_roc) == 0)
+# assert(torch.sum(closing_price_roc_mag != closing_price_roc_mag) == 0)
+# assert(torch.sum(closing_price_roc_sign != closing_price_roc_sign) == 0)
 
 
 # %%
@@ -260,11 +272,13 @@ data_in = candle_stats
 # data_out = high_low_stats
 data_out = closing_price_roc
 # data_in = candle_stats
+# data_out = torch.cat([closing_price_cat, closing_price_roc], dim=1)
+# data_out = torch.cat([closing_price_roc_mag, closing_price_roc_sign], dim=1)
 # data_out = torch.cat([high_low_stats, closing_price_roc], dim=1)
 
 print(condensed_prices_tensor[:5])
-print(data_in[:5])
-print(data_out[:5])
+print(data_in[:25])
+print(data_out[:25])
 
 assert(data_in.shape[0] == data_out.shape[0])
 assert(data_in.shape[1] == INPUT_FEATURE_SIZE)
