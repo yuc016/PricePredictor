@@ -7,7 +7,6 @@ import model_factory
 
 from math import sqrt, exp
 
-
 class NeuralNetTrainer:
     def __init__(self, config_file_path, experiment_dir_path, print_info=True):
 
@@ -277,19 +276,23 @@ class NeuralNetTrainer:
         product_net = 100.0
         my_net = 100.0
         
-        BUY_TRANSACTION_FEE_RATE = 0.0002
-        SELL_TRANSACTION_FEE_RATE = 0.0002
+        BUY_TRANSACTION_FEE_RATE = 0.00035
+        SELL_TRANSACTION_FEE_RATE = 0.00035
         BUY_THRESH = 0
         bought_in = False
         correct_trend_pred_ct = 0
+        trend_ct = 0
         
         for i in range(len(actual_serie)):
             # actual_roc = (-1) ** (actual_serie[i,-1] + 0.5) * -1 * exp(actual_serie[i, 0])
             actual_roc = actual_serie[i,-1] / 1000
             predict_roc = predict_serie[i, -1]
 
-            if actual_roc * predict_roc > 0:
-                correct_trend_pred_ct += 1
+            # Count accuracy of trend prediction for siginificant roc
+            if actual_roc > 0.00035 or actual_roc < -0.00035:
+                if actual_roc * predict_roc > 0:
+                    correct_trend_pred_ct += 1
+                trend_ct += 1
 
             # Update equity net worth
             product_net = product_net * (1 + actual_roc)
@@ -343,4 +346,4 @@ class NeuralNetTrainer:
                             "Time step", "Percentage of Original Capital", 
                             "test_trade"+test_name, self.experiment_dir_path)
         
-        return product_net, my_net, correct_trend_pred_ct / len(actual_serie)
+        return product_net, my_net, correct_trend_pred_ct / trend_ct

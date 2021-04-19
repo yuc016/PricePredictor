@@ -44,7 +44,7 @@ class CNN1L_LSTM(nn.Module):
             nn.ReLU()
         )
         
-        self.lstm = nn.LSTM(conv1_size + 1, lstm_size, num_layers, batch_first=True)
+        self.lstm = nn.LSTM(conv1_size + input_feature_size, lstm_size, num_layers, batch_first=True)
 
         self.lin2 = nn.Sequential(
             nn.Dropout(dropout_rate),
@@ -62,7 +62,7 @@ class CNN1L_LSTM(nn.Module):
 #         print(x.shape)
         x = self.conv1d(x.permute(0,2,1)).permute(0,2,1)
 #         print(x.shape)
-        x = torch.cat([x, input_series[:, :, -1].unsqueeze(2)], dim=2)
+        x = torch.cat([x, input_series], dim=2)
         x, _ = self.lstm(x)
 #         print(x.shape)
         x = x[:, -1:, :]

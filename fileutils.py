@@ -5,9 +5,14 @@ import os
 import matplotlib.pyplot as plt
 
 def get_config_from_file(file_path):
-    with open(file_path) as json_file:
+    with open(file_path, 'r') as json_file:
         data = json.load(json_file)
     return data
+
+
+def write_config_to_file(file_path, config):
+    with open(file_path, 'w') as json_file:
+        json.dump(config, json_file, indent=4)
 
 
 def load_experiment_state(trainer, cuda=True):

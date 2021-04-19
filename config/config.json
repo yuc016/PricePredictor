@@ -14,24 +14,24 @@
     "model": {
         "name": "CNN1L_LSTM",
         "input_feature_size": 4,
-        "l1_size": -1, 
-        "conv1_size": 300, 
+        "l1_size": -1,
+        "conv1_size": 359,
         "conv1_kernel_size": 11,
         "conv2_size": -1,
-        "conv2_kernel_size": -1,        
-        "lstm_size": 600, 
-        "num_lstm_layers": 3,
-        "l2_size": 150, 
+        "conv2_kernel_size": -1,
+        "lstm_size": 655,
+        "num_lstm_layers": 1,
+        "l2_size": 208,
         "output_feature_size": 1,
         "dropout_rate": 0.6
     },
     "training": {
         "num_folds": 1,
         "num_epochs": 120,
-        "batch_size": 256,
-        "learning_rate": 0.00001,
+        "batch_size": 128,
+        "learning_rate": 1e-05,
         "overfit_limit": 50,
-        "weight_decay": 0.00000001
+        "weight_decay": 1e-08
     },
     "experiment": {
         "save_period": 5

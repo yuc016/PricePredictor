@@ -8,17 +8,17 @@ from run_live import run_live
 
 EXP_ROOT_DIR = "experiments"
 SYMBOL = 'BTC'
-TIME_INTERVAL = 60
+TIME_INTERVAL = 600
 BUY_THRESH = 0
 ACCOUNT = 'chenyyo0o0o@gmail.com'
 CANCEL_BUFFER = 5
-TRANSACTION_FEE_RATE = 0.0001
+TRANSACTION_FEE_RATE = 0.00035
 
 def sigint_exit(sig, frame):
     print('Logging out..')
     r.cancel_all_crypto_orders()
     r.logout()    
-    print('Cancelled all pending orders and logged out')
+    print('Cancelled pending orders and logged out')
     sys.exit(0)
     
 
@@ -26,25 +26,28 @@ def trade_loop(config_file_path, experiment_dir_path):
     while True:
         now = int(time.time())
         # wait until next time step
-        while (now + CANCEL_BUFFER) % (TIME_INTERVAL // 3) != 0:
+        while (now + CANCEL_BUFFER) % (TIME_INTERVAL // 2) != 0:
             time.sleep(0.5)
             now = int(time.time())
             
         print("\n\n\n")
 
-        new_timestep = (now + CANCEL_BUFFER) % TIME_INTERVAL == 0
-        if new_timestep:
-            print("New timestep")
+        # new_timestep = (now + CANCEL_BUFFER) % TIME_INTERVAL == 0
+        # if new_timestep:
+        #     print("New timestep")
             
         # Cancel pending order
         print("Cancelling pending orders")
-        r.cancel_all_crypto_orders()
+        try:
+            r.cancel_all_crypto_orders()
+        except:
+            print("Cancel orders failed!!!!")
 
         # Wait until server updates new data
         time.sleep(CANCEL_BUFFER)
 
         last_close, predicted_close, predicted_roc = run_live(config_file_path, experiment_dir_path, mode='p', logged_in=True)
-        print("Predicted ROC:", predicted_roc)
+        print("Predicted ROC: {:.3f}%".format(predicted_roc / 10))
         
         if predicted_roc > BUY_THRESH:
             capital = float(r.load_phoenix_account('crypto_buying_power')['amount'])
@@ -52,30 +55,29 @@ def trade_loop(config_file_path, experiment_dir_path):
             mark_price = float(r.get_crypto_quote(SYMBOL, 'mark_price'))
             print("Mark price: ", mark_price)
             
-            if new_timestep:
-                limit_price = min(last_close, mark_price)
-                limit_price = mark_price
-            else:
-                limit_price = mark_price
-            limit_price *= (1 + TRANSACTION_FEE_RATE)
+            limit_price = mark_price * (1 + TRANSACTION_FEE_RATE)
             print("Buy limit price:", limit_price)
             
-            # r.order_buy_crypto_limit_by_price(SYMBOL, capital, limit_price)
+            # Make sure there is room for growth
+            if predicted_close > limit_price:
+                try:
+                    r.order_buy_crypto_limit_by_price(SYMBOL, capital, limit_price)
+                except:
+                    print("Place buy order failed!!!!")
         else:
             quantity_held = r.get_crypto_quantity_held(SYMBOL)
             
             mark_price = float(r.get_crypto_quote(SYMBOL, 'mark_price'))
             print("Mark price: ", mark_price)
             
-            if new_timestep:
-                limit_price = max(last_close, mark_price)
-                limit_price = mark_price
-            else:
-                limit_price = mark_price
-            limit_price *= (1 - TRANSACTION_FEE_RATE)
+            limit_price = mark_price * (1 - TRANSACTION_FEE_RATE)
             print("Sell limit price:", limit_price)
             
-            # r.order_sell_crypto_limit(SYMBOL, quantity_held, limit_price)
+            
+            try:
+                r.order_sell_crypto_limit(SYMBOL, quantity_held, limit_price)
+            except:
+                print("Place sell order failed!!!!")
 
         print("Action complete!")
 
